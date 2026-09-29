@@ -19,12 +19,10 @@ public class Game3DView extends GLSurfaceView {
 
     public Game3DView(Context context) {
         super(context);
-
         setEGLContextClientVersion(2);
 
         renderer = new ParkRenderer();
         setRenderer(renderer);
-
         setRenderMode(RENDERMODE_CONTINUOUSLY);
     }
 
@@ -132,13 +130,14 @@ public class Game3DView extends GLSurfaceView {
         public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 
             GLES20.glClearColor(
-                    0.52f,
-                    0.72f,
-                    0.88f,
+                    0.55f,
+                    0.75f,
+                    0.90f,
                     1f
             );
 
             GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+            GLES20.glEnable(GLES20.GL_CULL_FACE);
 
             cubeBuffer = ByteBuffer
                     .allocateDirect(cubeVertices.length * 4)
@@ -221,7 +220,7 @@ public class Game3DView extends GLSurfaceView {
                     -1f,
                     1f,
                     2f,
-                    100f
+                    120f
             );
         }
 
@@ -238,21 +237,18 @@ public class Game3DView extends GLSurfaceView {
             Matrix.setLookAtM(
                     view,
                     0,
-
                     excavatorX,
-                    6.0f,
-                    excavatorZ + 10.0f,
-
+                    6.5f,
+                    excavatorZ + 11f,
                     excavatorX,
-                    0.5f,
-                    excavatorZ,
-
+                    0.2f,
+                    excavatorZ - 1f,
                     0f,
                     1f,
                     0f
             );
 
-            drawPark();
+            drawGround();
             drawRoad();
             drawDiggingArea();
             drawTrees();
@@ -263,76 +259,72 @@ public class Game3DView extends GLSurfaceView {
 
         private void moveExcavator() {
 
-            float speed = 0.10f;
+            float speed = 0.09f;
 
-            if (left) {
-                excavatorX -= speed;
-            }
+            if (left) excavatorX -= speed;
+            if (right) excavatorX += speed;
+            if (forward) excavatorZ -= speed;
+            if (backward) excavatorZ += speed;
 
-            if (right) {
-                excavatorX += speed;
-            }
-
-            if (forward) {
-                excavatorZ -= speed;
-            }
-
-            if (backward) {
-                excavatorZ += speed;
-            }
-
-            if (excavatorX > 8.5f) {
-                excavatorX = 8.5f;
-            }
-
-            if (excavatorX < -8.5f) {
-                excavatorX = -8.5f;
-            }
-
-            if (excavatorZ > 8.5f) {
-                excavatorZ = 8.5f;
-            }
-
-            if (excavatorZ < -8.5f) {
-                excavatorZ = -8.5f;
-            }
+            if (excavatorX > 8.5f) excavatorX = 8.5f;
+            if (excavatorX < -8.5f) excavatorX = -8.5f;
+            if (excavatorZ > 8.5f) excavatorZ = 8.5f;
+            if (excavatorZ < -8.5f) excavatorZ = -8.5f;
         }
 
-        private void drawPark() {
+        private void drawGround() {
 
             drawCube(
-                    0f,-0.55f,0f,
+                    0f,-0.65f,0f,
                     24f,1f,24f,
-                    0.22f,0.48f,0.20f
+                    0.24f,0.38f,0.15f
             );
 
             drawCube(
-                    0f,-0.02f,-7.5f,
-                    24f,0.08f,3f,
-                    0.30f,0.20f,0.10f
+                    0f,-0.08f,0f,
+                    22f,0.18f,22f,
+                    0.42f,0.28f,0.12f
+            );
+
+            drawCube(
+                    -6f,0.03f,4f,
+                    5f,0.08f,4f,
+                    0.48f,0.31f,0.13f
+            );
+
+            drawCube(
+                    6f,0.03f,-4f,
+                    4f,0.08f,5f,
+                    0.44f,0.29f,0.12f
+            );
+
+            drawCube(
+                    -8f,0.02f,0f,
+                    3f,0.06f,20f,
+                    0.18f,0.40f,0.12f
+            );
+
+            drawCube(
+                    8f,0.02f,0f,
+                    3f,0.06f,20f,
+                    0.18f,0.40f,0.12f
             );
         }
 
         private void drawRoad() {
 
             drawCube(
-                    0f,0.01f,0f,
-                    5f,0.10f,22f,
-                    0.28f,0.24f,0.18f
+                    0f,0.03f,0f,
+                    4.8f,0.12f,21f,
+                    0.24f,0.23f,0.20f
             );
 
             for (int z = -9; z <= 9; z += 2) {
 
                 drawCube(
-                        0f,
-                        0.07f,
-                        z,
-                        0.18f,
-                        0.02f,
-                        0.8f,
-                        0.90f,
-                        0.78f,
-                        0.20f
+                        0f,0.11f,z,
+                        0.18f,0.025f,0.85f,
+                        0.95f,0.80f,0.25f
                 );
             }
         }
@@ -340,39 +332,39 @@ public class Game3DView extends GLSurfaceView {
         private void drawDiggingArea() {
 
             drawCube(
-                    -6f,
-                    -0.20f,
-                    -4f,
-                    5f,
-                    0.35f,
-                    4f,
-                    0.38f,
-                    0.22f,
-                    0.08f
+                    -5.8f,-0.42f,-4f,
+                    5.2f,0.55f,4.2f,
+                    0.28f,0.16f,0.07f
             );
 
             drawCube(
-                    -6f,
-                    0.02f,
-                    -4f,
-                    3.8f,
-                    0.08f,
-                    2.8f,
-                    0.45f,
-                    0.28f,
-                    0.10f
+                    -5.8f,-0.05f,-4f,
+                    3.7f,0.08f,2.7f,
+                    0.34f,0.20f,0.08f
             );
 
             drawCube(
-                    -6f,
-                    0.18f,
-                    -4f,
-                    2.0f,
-                    0.12f,
-                    1.2f,
-                    0.30f,
-                    0.17f,
-                    0.06f
+                    -5.8f,0.12f,-6f,
+                    5.4f,0.25f,0.45f,
+                    0.48f,0.30f,0.11f
+            );
+
+            drawCube(
+                    -5.8f,0.12f,-2f,
+                    5.4f,0.25f,0.45f,
+                    0.48f,0.30f,0.11f
+            );
+
+            drawCube(
+                    -8.2f,0.12f,-4f,
+                    0.45f,0.25f,3.8f,
+                    0.48f,0.30f,0.11f
+            );
+
+            drawCube(
+                    -3.4f,0.12f,-4f,
+                    0.45f,0.25f,3.8f,
+                    0.48f,0.30f,0.11f
             );
         }
 
@@ -386,42 +378,24 @@ public class Game3DView extends GLSurfaceView {
             tree(8f,2f);
         }
 
-        private void tree(float x, float z) {
+        private void tree(float x,float z) {
 
             drawCube(
-                    x,
-                    1f,
-                    z,
-                    0.45f,
-                    2f,
-                    0.45f,
-                    0.35f,
-                    0.18f,
-                    0.06f
+                    x,1f,z,
+                    0.45f,2f,0.45f,
+                    0.34f,0.18f,0.05f
             );
 
             drawCube(
-                    x,
-                    2.3f,
-                    z,
-                    2.0f,
-                    2.0f,
-                    2.0f,
-                    0.05f,
-                    0.32f,
-                    0.08f
+                    x,2.25f,z,
+                    2.1f,2f,2.1f,
+                    0.05f,0.30f,0.07f
             );
 
             drawCube(
-                    x,
-                    3.2f,
-                    z,
-                    1.3f,
-                    1.3f,
-                    1.3f,
-                    0.08f,
-                    0.42f,
-                    0.10f
+                    x,3.25f,z,
+                    1.35f,1.35f,1.35f,
+                    0.08f,0.42f,0.10f
             );
         }
 
@@ -430,13 +404,11 @@ public class Game3DView extends GLSurfaceView {
             rock(-4f,5f,1.2f);
             rock(5f,-5f,1.5f);
             rock(6f,5f,0.9f);
-            rock(-7f,7f,1.0f);
+            rock(-7f,7f,1f);
+            rock(7f,-1f,0.8f);
         }
 
-        private void rock(
-                float x,
-                float z,
-                float size) {
+        private void rock(float x,float z,float size) {
 
             drawCube(
                     x,
@@ -445,9 +417,7 @@ public class Game3DView extends GLSurfaceView {
                     size,
                     size * 0.8f,
                     size,
-                    0.28f,
-                    0.27f,
-                    0.25f
+                    0.25f,0.24f,0.22f
             );
         }
 
@@ -456,58 +426,34 @@ public class Game3DView extends GLSurfaceView {
             for (int x = -10; x <= 10; x += 2) {
 
                 drawCube(
-                        x,
-                        0.8f,
-                        -10f,
-                        0.15f,
-                        1.6f,
-                        0.15f,
-                        0.18f,
-                        0.18f,
-                        0.16f
+                        x,0.8f,-10f,
+                        0.15f,1.6f,0.15f,
+                        0.16f,0.16f,0.14f
                 );
 
                 drawCube(
-                        x,
-                        0.8f,
-                        10f,
-                        0.15f,
-                        1.6f,
-                        0.15f,
-                        0.18f,
-                        0.18f,
-                        0.16f
+                        x,0.8f,10f,
+                        0.15f,1.6f,0.15f,
+                        0.16f,0.16f,0.14f
                 );
             }
 
             drawCube(
-                    0f,
-                    1.15f,
-                    -10f,
-                    20f,
-                    0.15f,
-                    0.15f,
-                    0.18f,
-                    0.18f,
-                    0.16f
+                    0f,1.15f,-10f,
+                    20f,0.15f,0.15f,
+                    0.16f,0.16f,0.14f
             );
 
             drawCube(
-                    0f,
-                    0.55f,
-                    -10f,
-                    20f,
-                    0.15f,
-                    0.15f,
-                    0.18f,
-                    0.18f,
-                    0.16f
+                    0f,0.55f,-10f,
+                    20f,0.15f,0.15f,
+                    0.16f,0.16f,0.14f
             );
         }
 
         private void drawExcavator() {
 
-            // الجسم السفلي
+            // الجسم
             drawCube(
                     excavatorX,
                     0.65f,
@@ -515,9 +461,9 @@ public class Game3DView extends GLSurfaceView {
                     2.3f,
                     0.7f,
                     2.5f,
-                    0.95f,
-                    0.55f,
-                    0.03f
+                    0.92f,
+                    0.52f,
+                    0.025f
             );
 
             // الجنزير الأيسر
@@ -528,9 +474,9 @@ public class Game3DView extends GLSurfaceView {
                     0.42f,
                     0.42f,
                     2.7f,
-                    0.08f,
-                    0.08f,
-                    0.07f
+                    0.055f,
+                    0.055f,
+                    0.045f
             );
 
             // الجنزير الأيمن
@@ -541,9 +487,9 @@ public class Game3DView extends GLSurfaceView {
                     0.42f,
                     0.42f,
                     2.7f,
-                    0.08f,
-                    0.08f,
-                    0.07f
+                    0.055f,
+                    0.055f,
+                    0.045f
             );
 
             // الكابينة
@@ -554,12 +500,25 @@ public class Game3DView extends GLSurfaceView {
                     1.25f,
                     1.25f,
                     1.25f,
+                    0.08f,
                     0.10f,
-                    0.12f,
-                    0.13f
+                    0.11f
             );
 
-            // سقف الكابينة
+            // الزجاج
+            drawCube(
+                    excavatorX - 0.35f,
+                    1.62f,
+                    excavatorZ - 0.50f,
+                    0.90f,
+                    0.75f,
+                    0.05f,
+                    0.12f,
+                    0.25f,
+                    0.30f
+            );
+
+            // السقف
             drawCube(
                     excavatorX - 0.35f,
                     2.25f,
@@ -580,12 +539,12 @@ public class Game3DView extends GLSurfaceView {
                     0.45f,
                     0.45f,
                     0.45f,
-                    0.80f,
-                    0.45f,
+                    0.78f,
+                    0.43f,
                     0.02f
             );
 
-            // الذراع الأول
+            // الذراع الرئيسي
             drawCube(
                     excavatorX + 1.15f,
                     1.75f,
@@ -593,8 +552,8 @@ public class Game3DView extends GLSurfaceView {
                     0.45f,
                     2.0f,
                     0.55f,
-                    0.95f,
-                    0.55f,
+                    0.94f,
+                    0.53f,
                     0.02f
             );
 
@@ -606,8 +565,8 @@ public class Game3DView extends GLSurfaceView {
                     0.40f,
                     1.2f,
                     0.45f,
-                    0.95f,
-                    0.55f,
+                    0.94f,
+                    0.53f,
                     0.02f
             );
 
@@ -619,57 +578,33 @@ public class Game3DView extends GLSurfaceView {
                     1.0f,
                     0.65f,
                     0.85f,
-                    0.75f,
-                    0.42f,
+                    0.72f,
+                    0.39f,
                     0.02f
             );
         }
 
         private void drawCube(
-                float x,
-                float y,
-                float z,
-                float sx,
-                float sy,
-                float sz,
-                float r,
-                float g,
-                float b) {
+                float x,float y,float z,
+                float sx,float sy,float sz,
+                float r,float g,float b) {
 
-            Matrix.setIdentityM(model, 0);
+            Matrix.setIdentityM(model,0);
 
             Matrix.translateM(
-                    model,
-                    0,
-                    x,
-                    y,
-                    z
+                    model,0,x,y,z
             );
 
             Matrix.scaleM(
-                    model,
-                    0,
-                    sx,
-                    sy,
-                    sz
+                    model,0,sx,sy,sz
             );
 
             Matrix.multiplyMM(
-                    mv,
-                    0,
-                    view,
-                    0,
-                    model,
-                    0
+                    mv,0,view,0,model,0
             );
 
             Matrix.multiplyMM(
-                    mvp,
-                    0,
-                    projection,
-                    0,
-                    mv,
-                    0
+                    mvp,0,projection,0,mv,0
             );
 
             GLES20.glUseProgram(program);
@@ -697,17 +632,14 @@ public class Game3DView extends GLSurfaceView {
 
             GLES20.glUniform4f(
                     colorHandle,
-                    r,
-                    g,
-                    b,
-                    1f
+                    r,g,b,1f
             );
 
-            for (int i = 0; i < 6; i++) {
+            for (int i=0;i<6;i++) {
 
                 GLES20.glDrawArrays(
                         GLES20.GL_TRIANGLE_FAN,
-                        i * 4,
+                        i*4,
                         4
                 );
             }
