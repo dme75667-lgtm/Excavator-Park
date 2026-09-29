@@ -1,4 +1,4 @@
-package com.mehdi.excavatorpark;
+package com.mehdi.filterspark;
 
 import android.content.Context;
 import android.opengl.GLES20;
@@ -9,6 +9,9 @@ import android.view.MotionEvent;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
 
 public class Game3DView extends GLSurfaceView {
 
@@ -22,60 +25,39 @@ public class Game3DView extends GLSurfaceView {
         renderer = new Renderer3D();
         setRenderer(renderer);
 
-        setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+        setRenderMode(RENDERMODE_CONTINUOUSLY);
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
 
-        if (event.getAction() == MotionEvent.ACTION_DOWN ||
-                event.getAction() == MotionEvent.ACTION_MOVE) {
+        float x = event.getX();
+        float y = event.getY();
 
-            float x = event.getX();
-            float y = event.getY();
+        float width = getWidth();
+        float height = getHeight();
 
-            float w = getWidth();
-            float h = getHeight();
+        switch (event.getAction()) {
 
-            if (x < w * 0.25f) {
-                renderer.moveLeft = true;
-                renderer.moveRight = false;
-            } else if (x > w * 0.75f) {
-                renderer.moveRight = true;
-                renderer.moveLeft = false;
-            } else {
-                renderer.moveLeft = false;
-                renderer.moveRight = false;
-            }
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_MOVE:
 
-            if (y < h * 0.45f) {
-                renderer.moveForward = true;
-                renderer.moveBackward = false;
-            } else if (y > h * 0.70f) {
-                renderer.moveBackward = true;
-                renderer.moveForward = false;
-            } else {
-                renderer.moveForward = false;
-                renderer.moveBackward = false;
-            }
+                renderer.moveLeft = x < width * 0.25f;
+                renderer.moveRight = x > width * 0.75f;
 
-            return true;
-        }
+                renderer.moveForward = y < height * 0.45f;
+                renderer.moveBackward = y > height * 0.70f;
 
-        if (event.getAction() == MotionEvent.ACTION_UP) {
-            renderer.moveLeft = false;
-            renderer.moveRight = false;
-            renderer.moveForward = false;
-            renderer.moveBackward = false;
-            return true;
+                return true;
+
+            case MotionEvent.ACTION_UP:
+
+                renderer.stopMovement();
+                return true;
         }
 
         return true;
     }
-
-    // ============================================================
-    // RENDERER
-    // ============================================================
 
     private static class Renderer3D implements GLSurfaceView.Renderer {
 
@@ -83,6 +65,7 @@ public class Game3DView extends GLSurfaceView {
         private final float[] view = new float[16];
         private final float[] model = new float[16];
         private final float[] mvp = new float[16];
+        private final float[] temp = new float[16];
 
         private FloatBuffer cubeVertices;
 
@@ -94,20 +77,12 @@ public class Game3DView extends GLSurfaceView {
         private float excavatorX = 0f;
         private float excavatorZ = 0f;
 
-        private float cameraX;
-        private float cameraY = 8f;
-        private float cameraZ;
-
         private final float speed = 0.045f;
 
         boolean moveLeft;
         boolean moveRight;
         boolean moveForward;
         boolean moveBackward;
-
-        // --------------------------------------------------------
-        // Cube vertices
-        // --------------------------------------------------------
 
         private final float[] cubeData = {
 
@@ -168,54 +143,77 @@ public class Game3DView extends GLSurfaceView {
 
         @Override
         public void onSurfaceCreated(
-                javax.microedition.khronos.egl.EGLConfig config) {
+                GL10 gl,
+                EGLConfig config) {
 
             GLES20.glClearColor(
                     0.48f,
                     0.72f,
                     0.42f,
-                    1f
+                    1.0f
             );
 
-            GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-            GLES20.glEnable(GLES20.GL_CULL_FACE);
+            GLES20.glEnable(
+                    GLES20.GL_DEPTH_TEST
+            );
 
-            cubeVertices = ByteBuffer
-                    .allocateDirect(cubeData.length * 4)
-                    .order(ByteOrder.nativeOrder())
-                    .asFloatBuffer();
+            GLES20.glEnable(
+                    GLES20.GL_CULL_FACE
+            );
+
+            ByteBuffer buffer =
+                    ByteBuffer.allocateDirect(
+                            cubeData.length * 4
+                    );
+
+            buffer.order(
+                    ByteOrder.nativeOrder()
+            );
+
+            cubeVertices =
+                    buffer.asFloatBuffer();
 
             cubeVertices.put(cubeData);
             cubeVertices.position(0);
 
-            String vertexShaderCode =
+            String vertexShader =
                     "uniform mat4 uMVPMatrix;" +
                     "attribute vec4 vPosition;" +
                     "void main() {" +
                     "gl_Position = uMVPMatrix * vPosition;" +
                     "}";
 
-            String fragmentShaderCode =
+            String fragmentShader =
                     "precision mediump float;" +
                     "uniform vec4 vColor;" +
                     "void main() {" +
                     "gl_FragColor = vColor;" +
                     "}";
 
-            int vertexShader = loadShader(
-                    GLES20.GL_VERTEX_SHADER,
-                    vertexShaderCode
+            int vertex =
+                    loadShader(
+                            GLES20.GL_VERTEX_SHADER,
+                            vertexShader
+                    );
+
+            int fragment =
+                    loadShader(
+                            GLES20.GL_FRAGMENT_SHADER,
+                            fragmentShader
+                    );
+
+            program =
+                    GLES20.glCreateProgram();
+
+            GLES20.glAttachShader(
+                    program,
+                    vertex
             );
 
-            int fragmentShader = loadShader(
-                    GLES20.GL_FRAGMENT_SHADER,
-                    fragmentShaderCode
+            GLES20.glAttachShader(
+                    program,
+                    fragment
             );
-
-            program = GLES20.glCreateProgram();
-
-            GLES20.glAttachShader(program, vertexShader);
-            GLES20.glAttachShader(program, fragmentShader);
 
             GLES20.glLinkProgram(program);
 
@@ -240,29 +238,38 @@ public class Game3DView extends GLSurfaceView {
 
         @Override
         public void onSurfaceChanged(
-                javax.microedition.khronos.opengles.GL10 gl,
+                GL10 gl,
                 int width,
                 int height) {
 
-            GLES20.glViewport(0, 0, width, height);
+            if (height == 0) {
+                height = 1;
+            }
 
-            float ratio = (float) width / height;
+            GLES20.glViewport(
+                    0,
+                    0,
+                    width,
+                    height
+            );
+
+            float ratio =
+                    (float) width / (float) height;
 
             Matrix.frustumM(
                     projection,
                     0,
                     -ratio,
                     ratio,
-                    -1,
-                    1,
-                    2,
-                    120
+                    -1f,
+                    1f,
+                    2f,
+                    120f
             );
         }
 
         @Override
-        public void onDrawFrame(
-                javax.microedition.khronos.opengles.GL10 gl) {
+        public void onDrawFrame(GL10 gl) {
 
             GLES20.glClear(
                     GLES20.GL_COLOR_BUFFER_BIT |
@@ -271,169 +278,84 @@ public class Game3DView extends GLSurfaceView {
 
             updateExcavator();
 
-            cameraX = excavatorX;
-            cameraZ = excavatorZ + 12f;
+            float cameraX = excavatorX;
+            float cameraY = 8f;
+            float cameraZ = excavatorZ + 12f;
 
             Matrix.setLookAtM(
                     view,
                     0,
-
                     cameraX,
                     cameraY,
                     cameraZ,
-
                     excavatorX,
                     1.5f,
                     excavatorZ,
-
-                    0,
-                    1,
-                    0
+                    0f,
+                    1f,
+                    0f
             );
 
             drawTerrain();
-
             drawRoad();
-
             drawDiggingArea();
-
             drawTrees();
-
             drawRocks();
-
             drawFence();
-
             drawExcavator();
         }
 
-        // ========================================================
-        // TERRAIN
-        // ========================================================
-
         private void drawTerrain() {
 
-            // Base
             drawCube(
-                    0,
-                    -1.0f,
-                    0,
-                    45,
-                    1,
-                    45,
-                    0.18f,
-                    0.55f,
-                    0.18f,
-                    1
-            );
-
-            // Green terrain sections with different heights
-            drawCube(
-                    0,
-                    -0.35f,
-                    -15,
-                    42,
-                    0.7f,
-                    14,
-                    0.22f,
-                    0.62f,
-                    0.20f,
-                    1
+                    0f, -1f, 0f,
+                    45f, 1f, 45f,
+                    0.18f, 0.55f, 0.18f
             );
 
             drawCube(
-                    -14,
-                    -0.10f,
-                    2,
-                    12,
-                    1.2f,
-                    18,
-                    0.25f,
-                    0.68f,
-                    0.22f,
-                    1
+                    0f, -0.35f, -15f,
+                    42f, 0.7f, 14f,
+                    0.22f, 0.62f, 0.20f
             );
 
             drawCube(
-                    15,
-                    0.20f,
-                    3,
-                    12,
-                    1.8f,
-                    18,
-                    0.20f,
-                    0.58f,
-                    0.18f,
-                    1
-            );
-
-            // Small grass hills
-            drawCube(
-                    -8,
-                    0.65f,
-                    -9,
-                    8,
-                    1.0f,
-                    6,
-                    0.28f,
-                    0.72f,
-                    0.23f,
-                    1
+                    -14f, -0.10f, 2f,
+                    12f, 1.2f, 18f,
+                    0.25f, 0.68f, 0.22f
             );
 
             drawCube(
-                    8,
-                    0.85f,
-                    -8,
-                    9,
-                    1.4f,
-                    6,
-                    0.24f,
-                    0.65f,
-                    0.20f,
-                    1
+                    15f, 0.20f, 3f,
+                    12f, 1.8f, 18f,
+                    0.20f, 0.58f, 0.18f
             );
 
-            // Grass details
-            for (int i = -18; i <= 18; i += 4) {
+            drawCube(
+                    -8f, 0.65f, -9f,
+                    8f, 1f, 6f,
+                    0.28f, 0.72f, 0.23f
+            );
 
-                drawCube(
-                        i,
-                        0.15f,
-                        12,
-                        2.0f,
-                        0.25f,
-                        2.0f,
-                        0.16f,
-                        0.50f,
-                        0.14f,
-                        1
-                );
-            }
+            drawCube(
+                    8f, 0.85f, -8f,
+                    9f, 1.4f, 6f,
+                    0.24f, 0.65f, 0.20f
+            );
         }
-
-        // ========================================================
-        // ROAD
-        // ========================================================
 
         private void drawRoad() {
 
             drawCube(
-                    0,
-                    0.05f,
-                    0,
-                    8,
-                    0.15f,
-                    45,
-                    0.12f,
-                    0.12f,
-                    0.12f,
-                    1
+                    0f, 0.05f, 0f,
+                    8f, 0.15f, 45f,
+                    0.12f, 0.12f, 0.12f
             );
 
             for (int z = -20; z <= 20; z += 5) {
 
                 drawCube(
-                        0,
+                        0f,
                         0.15f,
                         z,
                         0.35f,
@@ -441,333 +363,169 @@ public class Game3DView extends GLSurfaceView {
                         2.2f,
                         0.95f,
                         0.75f,
-                        0.08f,
-                        1
+                        0.08f
                 );
             }
         }
 
-        // ========================================================
-        // DIGGING AREA
-        // ========================================================
-
         private void drawDiggingArea() {
 
             drawCube(
-                    15,
-                    -0.20f,
-                    -4,
-                    9,
-                    0.5f,
-                    8,
-                    0.35f,
-                    0.25f,
-                    0.12f,
-                    1
+                    15f, -0.20f, -4f,
+                    9f, 0.5f, 8f,
+                    0.35f, 0.25f, 0.12f
             );
 
             drawCube(
-                    15,
-                    0.55f,
-                    -4,
-                    9,
-                    0.8f,
-                    1,
-                    0.40f,
-                    0.30f,
-                    0.14f,
-                    1
+                    15f, 0.55f, -4f,
+                    9f, 0.8f, 1f,
+                    0.40f, 0.30f, 0.14f
             );
 
             drawCube(
-                    15,
-                    0.55f,
-                    0,
-                    9,
-                    0.8f,
-                    1,
-                    0.40f,
-                    0.30f,
-                    0.14f,
-                    1
+                    15f, 0.55f, 0f,
+                    9f, 0.8f, 1f,
+                    0.40f, 0.30f, 0.14f
             );
 
             drawCube(
-                    11,
-                    0.55f,
-                    -4,
-                    1,
-                    0.8f,
-                    7,
-                    0.40f,
-                    0.30f,
-                    0.14f,
-                    1
+                    11f, 0.55f, -4f,
+                    1f, 0.8f, 7f,
+                    0.40f, 0.30f, 0.14f
             );
 
             drawCube(
-                    19,
-                    0.55f,
-                    -4,
-                    1,
-                    0.8f,
-                    7,
-                    0.40f,
-                    0.30f,
-                    0.14f,
-                    1
+                    19f, 0.55f, -4f,
+                    1f, 0.8f, 7f,
+                    0.40f, 0.30f, 0.14f
             );
         }
 
-        // ========================================================
-        // TREES
-        // ========================================================
-
         private void drawTrees() {
 
-            drawTree(-15, -10);
-            drawTree(15, -14);
-            drawTree(-16, 12);
-            drawTree(17, 13);
-            drawTree(-9, 16);
+            drawTree(-15f, -10f);
+            drawTree(15f, -14f);
+            drawTree(-16f, 12f);
+            drawTree(17f, 13f);
+            drawTree(-9f, 16f);
         }
 
         private void drawTree(float x, float z) {
 
             drawCube(
-                    x,
-                    1.4f,
-                    z,
-                    0.7f,
-                    2.8f,
-                    0.7f,
-                    0.32f,
-                    0.18f,
-                    0.08f,
-                    1
+                    x, 1.4f, z,
+                    0.7f, 2.8f, 0.7f,
+                    0.32f, 0.18f, 0.08f
             );
 
             drawCube(
-                    x,
-                    3.2f,
-                    z,
-                    2.8f,
-                    2.8f,
-                    2.8f,
-                    0.10f,
-                    0.48f,
-                    0.12f,
-                    1
+                    x, 3.2f, z,
+                    2.8f, 2.8f, 2.8f,
+                    0.10f, 0.48f, 0.12f
             );
         }
-
-        // ========================================================
-        // ROCKS
-        // ========================================================
 
         private void drawRocks() {
 
             drawCube(
-                    -10,
-                    0.8f,
-                    -3,
-                    2.2f,
-                    1.4f,
-                    2.0f,
-                    0.35f,
-                    0.35f,
-                    0.32f,
-                    1
+                    -10f, 0.8f, -3f,
+                    2.2f, 1.4f, 2f,
+                    0.35f, 0.35f, 0.32f
             );
 
             drawCube(
-                    10,
-                    1.0f,
-                    8,
-                    2.8f,
-                    1.8f,
-                    2.2f,
-                    0.38f,
-                    0.36f,
-                    0.30f,
-                    1
+                    10f, 1f, 8f,
+                    2.8f, 1.8f, 2.2f,
+                    0.38f, 0.36f, 0.30f
             );
         }
-
-        // ========================================================
-        // FENCE
-        // ========================================================
 
         private void drawFence() {
 
             for (int x = -20; x <= 20; x += 4) {
 
                 drawCube(
-                        x,
-                        1.2f,
-                        -20,
-                        0.3f,
-                        2.4f,
-                        0.3f,
-                        0.30f,
-                        0.30f,
-                        0.30f,
-                        1
+                        x, 1.2f, -20f,
+                        0.3f, 2.4f, 0.3f,
+                        0.30f, 0.30f, 0.30f
                 );
 
                 drawCube(
-                        x,
-                        1.2f,
-                        20,
-                        0.3f,
-                        2.4f,
-                        0.3f,
-                        0.30f,
-                        0.30f,
-                        0.30f,
-                        1
+                        x, 1.2f, 20f,
+                        0.3f, 2.4f, 0.3f,
+                        0.30f, 0.30f, 0.30f
                 );
             }
         }
-
-        // ========================================================
-        // EXCAVATOR
-        // ========================================================
 
         private void drawExcavator() {
 
             float x = excavatorX;
             float z = excavatorZ;
 
-            // Tracks
+            // Left track
             drawCube(
-                    x - 1.1f,
-                    0.7f,
-                    z,
-                    1.2f,
-                    0.8f,
-                    3.2f,
-                    0.08f,
-                    0.08f,
-                    0.08f,
-                    1
+                    x - 1.1f, 0.7f, z,
+                    1.2f, 0.8f, 3.2f,
+                    0.08f, 0.08f, 0.08f
             );
 
+            // Right track
             drawCube(
-                    x + 1.1f,
-                    0.7f,
-                    z,
-                    1.2f,
-                    0.8f,
-                    3.2f,
-                    0.08f,
-                    0.08f,
-                    0.08f,
-                    1
+                    x + 1.1f, 0.7f, z,
+                    1.2f, 0.8f, 3.2f,
+                    0.08f, 0.08f, 0.08f
             );
 
-            // Main body
+            // Body
             drawCube(
-                    x,
-                    1.35f,
-                    z,
-                    3.0f,
-                    1.0f,
-                    2.4f,
-                    0.95f,
-                    0.62f,
-                    0.05f,
-                    1
+                    x, 1.35f, z,
+                    3f, 1f, 2.4f,
+                    0.95f, 0.62f, 0.05f
             );
 
             // Cabin
             drawCube(
-                    x,
-                    2.45f,
-                    z - 0.35f,
-                    1.8f,
-                    1.6f,
-                    1.7f,
-                    0.95f,
-                    0.65f,
-                    0.06f,
-                    1
+                    x, 2.45f, z - 0.35f,
+                    1.8f, 1.6f, 1.7f,
+                    0.95f, 0.65f, 0.06f
             );
 
-            // Windows
+            // Front window
             drawCube(
-                    x,
-                    2.55f,
-                    z - 1.25f,
-                    1.3f,
-                    0.9f,
-                    0.08f,
-                    0.08f,
-                    0.20f,
-                    0.28f,
-                    1
+                    x, 2.55f, z - 1.25f,
+                    1.3f, 0.9f, 0.08f,
+                    0.08f, 0.20f, 0.28f
             );
 
             // Roof
             drawCube(
-                    x,
-                    3.35f,
-                    z - 0.35f,
-                    2.0f,
-                    0.2f,
-                    1.9f,
-                    0.85f,
-                    0.50f,
-                    0.03f,
-                    1
+                    x, 3.35f, z - 0.35f,
+                    2f, 0.2f, 1.9f,
+                    0.85f, 0.50f, 0.03f
             );
 
-            // Arm
+            // Main boom
             drawCube(
-                    x,
-                    3.0f,
-                    z + 2.0f,
-                    0.65f,
-                    0.65f,
-                    3.5f,
-                    0.92f,
-                    0.58f,
-                    0.03f,
-                    1
+                    x, 3f, z + 2f,
+                    0.65f, 0.65f, 3.5f,
+                    0.92f, 0.58f, 0.03f
             );
 
-            // Second arm
+            // Stick
             drawCube(
-                    x,
-                    2.2f,
-                    z + 4.0f,
-                    0.55f,
-                    0.55f,
-                    2.8f,
-                    0.88f,
-                    0.52f,
-                    0.02f,
-                    1
+                    x, 2.2f, z + 4f,
+                    0.55f, 0.55f, 2.8f,
+                    0.88f, 0.52f, 0.02f
             );
 
             // Bucket
             drawCube(
-                    x,
-                    1.45f,
-                    z + 5.3f,
-                    1.8f,
-                    1.2f,
-                    1.4f,
-                    0.82f,
-                    0.48f,
-                    0.02f,
-                    1
+                    x, 1.45f, z + 5.3f,
+                    1.8f, 1.2f, 1.4f,
+                    0.82f, 0.48f, 0.02f
             );
         }
-
-        // ========================================================
-        // MOVEMENT
-        // ========================================================
 
         private void updateExcavator() {
 
@@ -787,22 +545,32 @@ public class Game3DView extends GLSurfaceView {
                 excavatorX += speed;
             }
 
-            if (excavatorX > 18)
-                excavatorX = 18;
+            excavatorX =
+                    Math.max(
+                            -18f,
+                            Math.min(
+                                    18f,
+                                    excavatorX
+                            )
+                    );
 
-            if (excavatorX < -18)
-                excavatorX = -18;
-
-            if (excavatorZ > 18)
-                excavatorZ = 18;
-
-            if (excavatorZ < -18)
-                excavatorZ = -18;
+            excavatorZ =
+                    Math.max(
+                            -18f,
+                            Math.min(
+                                    18f,
+                                    excavatorZ
+                            )
+                    );
         }
 
-        // ========================================================
-        // DRAW CUBE
-        // ========================================================
+        private void stopMovement() {
+
+            moveLeft = false;
+            moveRight = false;
+            moveForward = false;
+            moveBackward = false;
+        }
 
         private void drawCube(
                 float x,
@@ -813,8 +581,7 @@ public class Game3DView extends GLSurfaceView {
                 float sz,
                 float r,
                 float g,
-                float b,
-                float a) {
+                float b) {
 
             Matrix.setIdentityM(model, 0);
 
@@ -833,8 +600,6 @@ public class Game3DView extends GLSurfaceView {
                     sy,
                     sz
             );
-
-            float[] temp = new float[16];
 
             Matrix.multiplyMM(
                     temp,
@@ -869,7 +634,7 @@ public class Game3DView extends GLSurfaceView {
                     r,
                     g,
                     b,
-                    a
+                    1f
             );
 
             cubeVertices.position(0);
@@ -883,7 +648,7 @@ public class Game3DView extends GLSurfaceView {
                     3,
                     GLES20.GL_FLOAT,
                     false,
-                    3 * 4,
+                    12,
                     cubeVertices
             );
 
@@ -898,20 +663,16 @@ public class Game3DView extends GLSurfaceView {
             );
         }
 
-        // ========================================================
-        // SHADER
-        // ========================================================
-
         private int loadShader(
                 int type,
-                String shaderCode) {
+                String code) {
 
             int shader =
                     GLES20.glCreateShader(type);
 
             GLES20.glShaderSource(
                     shader,
-                    shaderCode
+                    code
             );
 
             GLES20.glCompileShader(shader);
@@ -919,4 +680,4 @@ public class Game3DView extends GLSurfaceView {
             return shader;
         }
     }
-                }
+}
