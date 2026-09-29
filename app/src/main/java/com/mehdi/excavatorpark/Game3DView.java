@@ -25,7 +25,7 @@ public class Game3DView extends GLSurfaceView {
         renderer = new ParkRenderer();
         setRenderer(renderer);
 
-        setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+        setRenderMode(RENDERMODE_CONTINUOUSLY);
     }
 
     @Override
@@ -96,6 +96,7 @@ public class Game3DView extends GLSurfaceView {
         boolean backward;
 
         private final float[] cubeVertices = {
+
                 -0.5f,-0.5f, 0.5f,
                  0.5f,-0.5f, 0.5f,
                  0.5f, 0.5f, 0.5f,
@@ -262,7 +263,7 @@ public class Game3DView extends GLSurfaceView {
 
         private void moveExcavator() {
 
-            float speed = 0.075f;
+            float speed = 0.10f;
 
             if (left) {
                 excavatorX -= speed;
@@ -280,11 +281,21 @@ public class Game3DView extends GLSurfaceView {
                 excavatorZ += speed;
             }
 
-            if (excavatorX > 8f) excavatorX = 8f;
-            if (excavatorX < -8f) excavatorX = -8f;
+            if (excavatorX > 8.5f) {
+                excavatorX = 8.5f;
+            }
 
-            if (excavatorZ > 8f) excavatorZ = 8f;
-            if (excavatorZ < -8f) excavatorZ = -8f;
+            if (excavatorX < -8.5f) {
+                excavatorX = -8.5f;
+            }
+
+            if (excavatorZ > 8.5f) {
+                excavatorZ = 8.5f;
+            }
+
+            if (excavatorZ < -8.5f) {
+                excavatorZ = -8.5f;
+            }
         }
 
         private void drawPark() {
@@ -625,7 +636,7 @@ public class Game3DView extends GLSurfaceView {
                 float g,
                 float b) {
 
-            Matrix.setIdentityM(model,0);
+            Matrix.setIdentityM(model, 0);
 
             Matrix.translateM(
                     model,
