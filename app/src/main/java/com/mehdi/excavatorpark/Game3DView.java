@@ -1,4 +1,4 @@
-package com.mehdi.filterspark;
+package com.mehdi.excavatorpark;
 
 import android.content.Context;
 import android.opengl.GLES20;
@@ -86,65 +86,63 @@ public class Game3DView extends GLSurfaceView {
 
         private final float[] cubeData = {
 
-                // Front
-                -0.5f, -0.5f,  0.5f,
-                 0.5f, -0.5f,  0.5f,
-                 0.5f,  0.5f,  0.5f,
+            // Front
+            -0.5f, -0.5f,  0.5f,
+             0.5f, -0.5f,  0.5f,
+             0.5f,  0.5f,  0.5f,
 
-                -0.5f, -0.5f,  0.5f,
-                 0.5f,  0.5f,  0.5f,
-                -0.5f,  0.5f,  0.5f,
+            -0.5f, -0.5f,  0.5f,
+             0.5f,  0.5f,  0.5f,
+            -0.5f,  0.5f,  0.5f,
 
-                // Back
-                 0.5f, -0.5f, -0.5f,
-                -0.5f, -0.5f, -0.5f,
-                -0.5f,  0.5f, -0.5f,
+            // Back
+             0.5f, -0.5f, -0.5f,
+            -0.5f, -0.5f, -0.5f,
+            -0.5f,  0.5f, -0.5f,
 
-                 0.5f, -0.5f, -0.5f,
-                -0.5f,  0.5f, -0.5f,
-                 0.5f,  0.5f, -0.5f,
+             0.5f, -0.5f, -0.5f,
+            -0.5f,  0.5f, -0.5f,
+             0.5f,  0.5f, -0.5f,
 
-                // Left
-                -0.5f, -0.5f, -0.5f,
-                -0.5f, -0.5f,  0.5f,
-                -0.5f,  0.5f,  0.5f,
+            // Left
+            -0.5f, -0.5f, -0.5f,
+            -0.5f, -0.5f,  0.5f,
+            -0.5f,  0.5f,  0.5f,
 
-                -0.5f, -0.5f, -0.5f,
-                -0.5f,  0.5f,  0.5f,
-                -0.5f,  0.5f, -0.5f,
+            -0.5f, -0.5f, -0.5f,
+            -0.5f,  0.5f,  0.5f,
+            -0.5f,  0.5f, -0.5f,
 
-                // Right
-                 0.5f, -0.5f,  0.5f,
-                 0.5f, -0.5f, -0.5f,
-                 0.5f,  0.5f, -0.5f,
+            // Right
+             0.5f, -0.5f,  0.5f,
+             0.5f, -0.5f, -0.5f,
+             0.5f,  0.5f, -0.5f,
 
-                 0.5f, -0.5f,  0.5f,
-                 0.5f,  0.5f, -0.5f,
-                 0.5f,  0.5f,  0.5f,
+             0.5f, -0.5f,  0.5f,
+             0.5f,  0.5f, -0.5f,
+             0.5f,  0.5f,  0.5f,
 
-                // Top
-                -0.5f,  0.5f,  0.5f,
-                 0.5f,  0.5f,  0.5f,
-                 0.5f,  0.5f, -0.5f,
+            // Top
+            -0.5f,  0.5f,  0.5f,
+             0.5f,  0.5f,  0.5f,
+             0.5f,  0.5f, -0.5f,
 
-                -0.5f,  0.5f,  0.5f,
-                 0.5f,  0.5f, -0.5f,
-                -0.5f,  0.5f, -0.5f,
+            -0.5f,  0.5f,  0.5f,
+             0.5f,  0.5f, -0.5f,
+            -0.5f,  0.5f, -0.5f,
 
-                // Bottom
-                -0.5f, -0.5f, -0.5f,
-                 0.5f, -0.5f, -0.5f,
-                 0.5f, -0.5f,  0.5f,
+            // Bottom
+            -0.5f, -0.5f, -0.5f,
+             0.5f, -0.5f, -0.5f,
+             0.5f, -0.5f,  0.5f,
 
-                -0.5f, -0.5f, -0.5f,
-                 0.5f, -0.5f,  0.5f,
-                -0.5f, -0.5f,  0.5f
+            -0.5f, -0.5f, -0.5f,
+             0.5f, -0.5f,  0.5f,
+            -0.5f, -0.5f,  0.5f
         };
 
         @Override
-        public void onSurfaceCreated(
-                GL10 gl,
-                EGLConfig config) {
+        public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 
             GLES20.glClearColor(
                     0.48f,
@@ -153,25 +151,15 @@ public class Game3DView extends GLSurfaceView {
                     1.0f
             );
 
-            GLES20.glEnable(
-                    GLES20.GL_DEPTH_TEST
-            );
-
-            GLES20.glEnable(
-                    GLES20.GL_CULL_FACE
-            );
+            GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+            GLES20.glEnable(GLES20.GL_CULL_FACE);
 
             ByteBuffer buffer =
-                    ByteBuffer.allocateDirect(
-                            cubeData.length * 4
-                    );
+                    ByteBuffer.allocateDirect(cubeData.length * 4);
 
-            buffer.order(
-                    ByteOrder.nativeOrder()
-            );
+            buffer.order(ByteOrder.nativeOrder());
 
-            cubeVertices =
-                    buffer.asFloatBuffer();
+            cubeVertices = buffer.asFloatBuffer();
 
             cubeVertices.put(cubeData);
             cubeVertices.position(0);
@@ -202,18 +190,10 @@ public class Game3DView extends GLSurfaceView {
                             fragmentShader
                     );
 
-            program =
-                    GLES20.glCreateProgram();
+            program = GLES20.glCreateProgram();
 
-            GLES20.glAttachShader(
-                    program,
-                    vertex
-            );
-
-            GLES20.glAttachShader(
-                    program,
-                    fragment
-            );
+            GLES20.glAttachShader(program, vertex);
+            GLES20.glAttachShader(program, fragment);
 
             GLES20.glLinkProgram(program);
 
@@ -463,63 +443,54 @@ public class Game3DView extends GLSurfaceView {
             float x = excavatorX;
             float z = excavatorZ;
 
-            // Left track
             drawCube(
                     x - 1.1f, 0.7f, z,
                     1.2f, 0.8f, 3.2f,
                     0.08f, 0.08f, 0.08f
             );
 
-            // Right track
             drawCube(
                     x + 1.1f, 0.7f, z,
                     1.2f, 0.8f, 3.2f,
                     0.08f, 0.08f, 0.08f
             );
 
-            // Body
             drawCube(
                     x, 1.35f, z,
                     3f, 1f, 2.4f,
                     0.95f, 0.62f, 0.05f
             );
 
-            // Cabin
             drawCube(
                     x, 2.45f, z - 0.35f,
                     1.8f, 1.6f, 1.7f,
                     0.95f, 0.65f, 0.06f
             );
 
-            // Front window
             drawCube(
                     x, 2.55f, z - 1.25f,
                     1.3f, 0.9f, 0.08f,
                     0.08f, 0.20f, 0.28f
             );
 
-            // Roof
             drawCube(
                     x, 3.35f, z - 0.35f,
                     2f, 0.2f, 1.9f,
                     0.85f, 0.50f, 0.03f
             );
 
-            // Main boom
             drawCube(
                     x, 3f, z + 2f,
                     0.65f, 0.65f, 3.5f,
                     0.92f, 0.58f, 0.03f
             );
 
-            // Stick
             drawCube(
                     x, 2.2f, z + 4f,
                     0.55f, 0.55f, 2.8f,
                     0.88f, 0.52f, 0.02f
             );
 
-            // Bucket
             drawCube(
                     x, 1.45f, z + 5.3f,
                     1.8f, 1.2f, 1.4f,
