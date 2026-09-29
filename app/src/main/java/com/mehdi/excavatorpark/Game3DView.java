@@ -34,26 +34,24 @@ public class Game3DView extends GLSurfaceView {
         float x = event.getX();
         float y = event.getY();
 
-        float width = getWidth();
-        float height = getHeight();
+        float w = getWidth();
+        float h = getHeight();
 
-        switch (event.getAction()) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN ||
+                event.getAction() == MotionEvent.ACTION_MOVE) {
 
-            case MotionEvent.ACTION_DOWN:
-            case MotionEvent.ACTION_MOVE:
+            renderer.left  = x < w * 0.25f;
+            renderer.right = x > w * 0.75f;
 
-                renderer.moveLeft = x < width * 0.25f;
-                renderer.moveRight = x > width * 0.75f;
+            renderer.forward  = y < h * 0.45f;
+            renderer.backward = y > h * 0.70f;
 
-                renderer.moveForward = y < height * 0.45f;
-                renderer.moveBackward = y > height * 0.70f;
+            return true;
+        }
 
-                return true;
-
-            case MotionEvent.ACTION_UP:
-
-                renderer.stopMovement();
-                return true;
+        if (event.getAction() == MotionEvent.ACTION_UP) {
+            renderer.stop();
+            return true;
         }
 
         return true;
@@ -64,81 +62,84 @@ public class Game3DView extends GLSurfaceView {
         private final float[] projection = new float[16];
         private final float[] view = new float[16];
         private final float[] model = new float[16];
-        private final float[] mvp = new float[16];
         private final float[] temp = new float[16];
+        private final float[] mvp = new float[16];
 
-        private FloatBuffer cubeVertices;
+        private FloatBuffer cube;
 
         private int program;
         private int positionHandle;
         private int colorHandle;
         private int mvpHandle;
 
-        private float excavatorX = 0f;
-        private float excavatorZ = 0f;
+        private float machineX = 0f;
+        private float machineZ = 4f;
+
+        private float armAngle = -15f;
+        private float bucketAngle = 20f;
 
         private final float speed = 0.045f;
 
-        boolean moveLeft;
-        boolean moveRight;
-        boolean moveForward;
-        boolean moveBackward;
+        boolean left;
+        boolean right;
+        boolean forward;
+        boolean backward;
 
-        private final float[] cubeData = {
+        private final float[] vertices = {
 
-            // Front
-            -0.5f, -0.5f,  0.5f,
-             0.5f, -0.5f,  0.5f,
-             0.5f,  0.5f,  0.5f,
+                // Front
+                -0.5f,-0.5f, 0.5f,
+                 0.5f,-0.5f, 0.5f,
+                 0.5f, 0.5f, 0.5f,
 
-            -0.5f, -0.5f,  0.5f,
-             0.5f,  0.5f,  0.5f,
-            -0.5f,  0.5f,  0.5f,
+                -0.5f,-0.5f, 0.5f,
+                 0.5f, 0.5f, 0.5f,
+                -0.5f, 0.5f, 0.5f,
 
-            // Back
-             0.5f, -0.5f, -0.5f,
-            -0.5f, -0.5f, -0.5f,
-            -0.5f,  0.5f, -0.5f,
+                // Back
+                 0.5f,-0.5f,-0.5f,
+                -0.5f,-0.5f,-0.5f,
+                -0.5f, 0.5f,-0.5f,
 
-             0.5f, -0.5f, -0.5f,
-            -0.5f,  0.5f, -0.5f,
-             0.5f,  0.5f, -0.5f,
+                 0.5f,-0.5f,-0.5f,
+                -0.5f, 0.5f,-0.5f,
+                 0.5f, 0.5f,-0.5f,
 
-            // Left
-            -0.5f, -0.5f, -0.5f,
-            -0.5f, -0.5f,  0.5f,
-            -0.5f,  0.5f,  0.5f,
+                // Left
+                -0.5f,-0.5f,-0.5f,
+                -0.5f,-0.5f, 0.5f,
+                -0.5f, 0.5f, 0.5f,
 
-            -0.5f, -0.5f, -0.5f,
-            -0.5f,  0.5f,  0.5f,
-            -0.5f,  0.5f, -0.5f,
+                -0.5f,-0.5f,-0.5f,
+                -0.5f, 0.5f, 0.5f,
+                -0.5f, 0.5f,-0.5f,
 
-            // Right
-             0.5f, -0.5f,  0.5f,
-             0.5f, -0.5f, -0.5f,
-             0.5f,  0.5f, -0.5f,
+                // Right
+                 0.5f,-0.5f, 0.5f,
+                 0.5f,-0.5f,-0.5f,
+                 0.5f, 0.5f,-0.5f,
 
-             0.5f, -0.5f,  0.5f,
-             0.5f,  0.5f, -0.5f,
-             0.5f,  0.5f,  0.5f,
+                 0.5f,-0.5f, 0.5f,
+                 0.5f, 0.5f,-0.5f,
+                 0.5f, 0.5f, 0.5f,
 
-            // Top
-            -0.5f,  0.5f,  0.5f,
-             0.5f,  0.5f,  0.5f,
-             0.5f,  0.5f, -0.5f,
+                // Top
+                -0.5f,0.5f,0.5f,
+                 0.5f,0.5f,0.5f,
+                 0.5f,0.5f,-0.5f,
 
-            -0.5f,  0.5f,  0.5f,
-             0.5f,  0.5f, -0.5f,
-            -0.5f,  0.5f, -0.5f,
+                -0.5f,0.5f,0.5f,
+                 0.5f,0.5f,-0.5f,
+                -0.5f,0.5f,-0.5f,
 
-            // Bottom
-            -0.5f, -0.5f, -0.5f,
-             0.5f, -0.5f, -0.5f,
-             0.5f, -0.5f,  0.5f,
+                // Bottom
+                -0.5f,-0.5f,-0.5f,
+                 0.5f,-0.5f,-0.5f,
+                 0.5f,-0.5f,0.5f,
 
-            -0.5f, -0.5f, -0.5f,
-             0.5f, -0.5f,  0.5f,
-            -0.5f, -0.5f,  0.5f
+                -0.5f,-0.5f,-0.5f,
+                 0.5f,-0.5f,0.5f,
+                -0.5f,-0.5f,0.5f
         };
 
         @Override
@@ -146,73 +147,70 @@ public class Game3DView extends GLSurfaceView {
 
             GLES20.glClearColor(
                     0.48f,
-                    0.72f,
-                    0.42f,
-                    1.0f
+                    0.70f,
+                    0.88f,
+                    1f
             );
 
             GLES20.glEnable(GLES20.GL_DEPTH_TEST);
             GLES20.glEnable(GLES20.GL_CULL_FACE);
 
-            ByteBuffer buffer =
-                    ByteBuffer.allocateDirect(cubeData.length * 4);
+            ByteBuffer bb =
+                    ByteBuffer.allocateDirect(vertices.length * 4);
 
-            buffer.order(ByteOrder.nativeOrder());
+            bb.order(ByteOrder.nativeOrder());
 
-            cubeVertices = buffer.asFloatBuffer();
-
-            cubeVertices.put(cubeData);
-            cubeVertices.position(0);
+            cube = bb.asFloatBuffer();
+            cube.put(vertices);
+            cube.position(0);
 
             String vertexShader =
-                    "uniform mat4 uMVPMatrix;" +
-                    "attribute vec4 vPosition;" +
-                    "void main() {" +
-                    "gl_Position = uMVPMatrix * vPosition;" +
+                    "uniform mat4 uMVP;" +
+                    "attribute vec4 position;" +
+                    "void main(){" +
+                    "gl_Position=uMVP*position;" +
                     "}";
 
             String fragmentShader =
                     "precision mediump float;" +
-                    "uniform vec4 vColor;" +
-                    "void main() {" +
-                    "gl_FragColor = vColor;" +
+                    "uniform vec4 color;" +
+                    "void main(){" +
+                    "gl_FragColor=color;" +
                     "}";
 
-            int vertex =
-                    loadShader(
-                            GLES20.GL_VERTEX_SHADER,
-                            vertexShader
-                    );
+            int vs = loadShader(
+                    GLES20.GL_VERTEX_SHADER,
+                    vertexShader
+            );
 
-            int fragment =
-                    loadShader(
-                            GLES20.GL_FRAGMENT_SHADER,
-                            fragmentShader
-                    );
+            int fs = loadShader(
+                    GLES20.GL_FRAGMENT_SHADER,
+                    fragmentShader
+            );
 
             program = GLES20.glCreateProgram();
 
-            GLES20.glAttachShader(program, vertex);
-            GLES20.glAttachShader(program, fragment);
+            GLES20.glAttachShader(program, vs);
+            GLES20.glAttachShader(program, fs);
 
             GLES20.glLinkProgram(program);
 
             positionHandle =
                     GLES20.glGetAttribLocation(
                             program,
-                            "vPosition"
+                            "position"
                     );
 
             colorHandle =
                     GLES20.glGetUniformLocation(
                             program,
-                            "vColor"
+                            "color"
                     );
 
             mvpHandle =
                     GLES20.glGetUniformLocation(
                             program,
-                            "uMVPMatrix"
+                            "uMVP"
                     );
         }
 
@@ -222,9 +220,8 @@ public class Game3DView extends GLSurfaceView {
                 int width,
                 int height) {
 
-            if (height == 0) {
+            if (height == 0)
                 height = 1;
-            }
 
             GLES20.glViewport(
                     0,
@@ -234,17 +231,17 @@ public class Game3DView extends GLSurfaceView {
             );
 
             float ratio =
-                    (float) width / (float) height;
+                    (float) width / height;
 
             Matrix.frustumM(
                     projection,
                     0,
                     -ratio,
                     ratio,
-                    -1f,
-                    1f,
-                    2f,
-                    120f
+                    -1,
+                    1,
+                    2,
+                    150
             );
         }
 
@@ -256,294 +253,415 @@ public class Game3DView extends GLSurfaceView {
                     GLES20.GL_DEPTH_BUFFER_BIT
             );
 
-            updateExcavator();
-
-            float cameraX = excavatorX;
-            float cameraY = 8f;
-            float cameraZ = excavatorZ + 12f;
+            updateMachine();
 
             Matrix.setLookAtM(
                     view,
                     0,
-                    cameraX,
-                    cameraY,
-                    cameraZ,
-                    excavatorX,
-                    1.5f,
-                    excavatorZ,
-                    0f,
-                    1f,
-                    0f
+
+                    machineX,
+                    7.5f,
+                    machineZ + 11f,
+
+                    machineX,
+                    1.7f,
+                    machineZ,
+
+                    0,
+                    1,
+                    0
             );
 
-            drawTerrain();
-            drawRoad();
-            drawDiggingArea();
-            drawTrees();
-            drawRocks();
-            drawFence();
+            drawWorld();
             drawExcavator();
         }
 
-        private void drawTerrain() {
+        private void drawWorld() {
 
-            drawCube(
-                    0f, -1f, 0f,
-                    45f, 1f, 45f,
-                    0.18f, 0.55f, 0.18f
+            // الأرض
+            cube(
+                    0,
+                    -0.8f,
+                    0,
+                    50,
+                    1,
+                    50,
+                    0.25f,
+                    0.55f,
+                    0.20f
             );
 
-            drawCube(
-                    0f, -0.35f, -15f,
-                    42f, 0.7f, 14f,
-                    0.22f, 0.62f, 0.20f
+            // الطريق
+            cube(
+                    0,
+                    -0.25f,
+                    0,
+                    8,
+                    0.18f,
+                    45,
+                    0.13f,
+                    0.13f,
+                    0.13f
             );
 
-            drawCube(
-                    -14f, -0.10f, 2f,
-                    12f, 1.2f, 18f,
-                    0.25f, 0.68f, 0.22f
-            );
-
-            drawCube(
-                    15f, 0.20f, 3f,
-                    12f, 1.8f, 18f,
-                    0.20f, 0.58f, 0.18f
-            );
-
-            drawCube(
-                    -8f, 0.65f, -9f,
-                    8f, 1f, 6f,
-                    0.28f, 0.72f, 0.23f
-            );
-
-            drawCube(
-                    8f, 0.85f, -8f,
-                    9f, 1.4f, 6f,
-                    0.24f, 0.65f, 0.20f
-            );
-        }
-
-        private void drawRoad() {
-
-            drawCube(
-                    0f, 0.05f, 0f,
-                    8f, 0.15f, 45f,
-                    0.12f, 0.12f, 0.12f
-            );
-
+            // خطوط الطريق
             for (int z = -20; z <= 20; z += 5) {
 
-                drawCube(
-                        0f,
-                        0.15f,
+                cube(
+                        0,
+                        -0.13f,
                         z,
-                        0.35f,
-                        0.08f,
-                        2.2f,
-                        0.95f,
-                        0.75f,
-                        0.08f
+                        0.3f,
+                        0.05f,
+                        2,
+                        1f,
+                        0.85f,
+                        0.15f
                 );
             }
-        }
 
-        private void drawDiggingArea() {
-
-            drawCube(
-                    15f, -0.20f, -4f,
-                    9f, 0.5f, 8f,
-                    0.35f, 0.25f, 0.12f
+            // منطقة الحفر
+            cube(
+                    15,
+                    -0.15f,
+                    -5,
+                    10,
+                    0.35f,
+                    9,
+                    0.38f,
+                    0.25f,
+                    0.12f
             );
 
-            drawCube(
-                    15f, 0.55f, -4f,
-                    9f, 0.8f, 1f,
-                    0.40f, 0.30f, 0.14f
+            // أكوام تراب
+            cube(
+                    11,
+                    0.7f,
+                    -5,
+                    2.5f,
+                    1.5f,
+                    2.5f,
+                    0.42f,
+                    0.29f,
+                    0.12f
             );
 
-            drawCube(
-                    15f, 0.55f, 0f,
-                    9f, 0.8f, 1f,
-                    0.40f, 0.30f, 0.14f
+            cube(
+                    19,
+                    0.8f,
+                    -3,
+                    3,
+                    1.7f,
+                    2.4f,
+                    0.40f,
+                    0.27f,
+                    0.10f
             );
 
-            drawCube(
-                    11f, 0.55f, -4f,
-                    1f, 0.8f, 7f,
-                    0.40f, 0.30f, 0.14f
-            );
+            // أشجار
+            tree(-16, -10);
+            tree(16, -14);
+            tree(-17, 12);
+            tree(17, 13);
 
-            drawCube(
-                    19f, 0.55f, -4f,
-                    1f, 0.8f, 7f,
-                    0.40f, 0.30f, 0.14f
-            );
-        }
-
-        private void drawTrees() {
-
-            drawTree(-15f, -10f);
-            drawTree(15f, -14f);
-            drawTree(-16f, 12f);
-            drawTree(17f, 13f);
-            drawTree(-9f, 16f);
-        }
-
-        private void drawTree(float x, float z) {
-
-            drawCube(
-                    x, 1.4f, z,
-                    0.7f, 2.8f, 0.7f,
-                    0.32f, 0.18f, 0.08f
-            );
-
-            drawCube(
-                    x, 3.2f, z,
-                    2.8f, 2.8f, 2.8f,
-                    0.10f, 0.48f, 0.12f
-            );
-        }
-
-        private void drawRocks() {
-
-            drawCube(
-                    -10f, 0.8f, -3f,
-                    2.2f, 1.4f, 2f,
-                    0.35f, 0.35f, 0.32f
-            );
-
-            drawCube(
-                    10f, 1f, 8f,
-                    2.8f, 1.8f, 2.2f,
-                    0.38f, 0.36f, 0.30f
+            // صخور
+            cube(
+                    -10,
+                    0.2f,
+                    -5,
+                    2.5f,
+                    1.5f,
+                    2,
+                    0.32f,
+                    0.32f,
+                    0.30f
             );
         }
 
-        private void drawFence() {
+        private void tree(float x, float z) {
 
-            for (int x = -20; x <= 20; x += 4) {
+            cube(
+                    x,
+                    1.2f,
+                    z,
+                    0.7f,
+                    2.4f,
+                    0.7f,
+                    0.35f,
+                    0.20f,
+                    0.08f
+            );
 
-                drawCube(
-                        x, 1.2f, -20f,
-                        0.3f, 2.4f, 0.3f,
-                        0.30f, 0.30f, 0.30f
-                );
-
-                drawCube(
-                        x, 1.2f, 20f,
-                        0.3f, 2.4f, 0.3f,
-                        0.30f, 0.30f, 0.30f
-                );
-            }
+            cube(
+                    x,
+                    3f,
+                    z,
+                    3f,
+                    3f,
+                    3f,
+                    0.08f,
+                    0.45f,
+                    0.10f
+            );
         }
 
         private void drawExcavator() {
 
-            float x = excavatorX;
-            float z = excavatorZ;
+            float x = machineX;
+            float z = machineZ;
 
-            drawCube(
-                    x - 1.1f, 0.7f, z,
-                    1.2f, 0.8f, 3.2f,
-                    0.08f, 0.08f, 0.08f
+            // =====================
+            // الجنزير الأيسر
+            // =====================
+
+            cube(
+                    x - 1.15f,
+                    0.35f,
+                    z,
+                    1.05f,
+                    0.75f,
+                    3.4f,
+                    0.08f,
+                    0.08f,
+                    0.07f
             );
 
-            drawCube(
-                    x + 1.1f, 0.7f, z,
-                    1.2f, 0.8f, 3.2f,
-                    0.08f, 0.08f, 0.08f
+            // =====================
+            // الجنزير الأيمن
+            // =====================
+
+            cube(
+                    x + 1.15f,
+                    0.35f,
+                    z,
+                    1.05f,
+                    0.75f,
+                    3.4f,
+                    0.08f,
+                    0.08f,
+                    0.07f
             );
 
-            drawCube(
-                    x, 1.35f, z,
-                    3f, 1f, 2.4f,
-                    0.95f, 0.62f, 0.05f
+            // عجلات الجنزير
+            for (int i = -1; i <= 1; i++) {
+
+                cube(
+                        x - 1.7f,
+                        0.35f,
+                        z + i * 1.0f,
+                        0.15f,
+                        0.45f,
+                        0.65f,
+                        0.20f,
+                        0.20f,
+                        0.18f
+                );
+
+                cube(
+                        x + 1.7f,
+                        0.35f,
+                        z + i * 1.0f,
+                        0.15f,
+                        0.45f,
+                        0.65f,
+                        0.20f,
+                        0.20f,
+                        0.18f
+                );
+            }
+
+            // قاعدة الدوران
+            cube(
+                    x,
+                    0.95f,
+                    z,
+                    3.0f,
+                    0.45f,
+                    2.5f,
+                    0.95f,
+                    0.58f,
+                    0.03f
             );
 
-            drawCube(
-                    x, 2.45f, z - 0.35f,
-                    1.8f, 1.6f, 1.7f,
-                    0.95f, 0.65f, 0.06f
+            // جسم الحفارة
+            cube(
+                    x,
+                    1.45f,
+                    z,
+                    2.5f,
+                    1.0f,
+                    2.3f,
+                    0.95f,
+                    0.62f,
+                    0.04f
             );
 
-            drawCube(
-                    x, 2.55f, z - 1.25f,
-                    1.3f, 0.9f, 0.08f,
-                    0.08f, 0.20f, 0.28f
+            // الكابينة
+            cube(
+                    x - 0.45f,
+                    2.55f,
+                    z - 0.25f,
+                    1.7f,
+                    1.8f,
+                    1.7f,
+                    0.12f,
+                    0.16f,
+                    0.18f
             );
 
-            drawCube(
-                    x, 3.35f, z - 0.35f,
-                    2f, 0.2f, 1.9f,
-                    0.85f, 0.50f, 0.03f
+            // زجاج أمامي
+            cube(
+                    x - 0.45f,
+                    2.65f,
+                    z - 1.12f,
+                    1.25f,
+                    1.15f,
+                    0.08f,
+                    0.08f,
+                    0.30f,
+                    0.38f
             );
 
-            drawCube(
-                    x, 3f, z + 2f,
-                    0.65f, 0.65f, 3.5f,
-                    0.92f, 0.58f, 0.03f
+            // سقف
+            cube(
+                    x - 0.45f,
+                    3.55f,
+                    z - 0.25f,
+                    1.9f,
+                    0.18f,
+                    1.9f,
+                    0.90f,
+                    0.55f,
+                    0.03f
             );
 
-            drawCube(
-                    x, 2.2f, z + 4f,
-                    0.55f, 0.55f, 2.8f,
-                    0.88f, 0.52f, 0.02f
+            // =====================
+            // الذراع
+            // =====================
+
+            Matrix.setIdentityM(model, 0);
+
+            Matrix.translateM(
+                    model,
+                    0,
+                    x,
+                    2.5f,
+                    z + 2.0f
             );
 
-            drawCube(
-                    x, 1.45f, z + 5.3f,
-                    1.8f, 1.2f, 1.4f,
-                    0.82f, 0.48f, 0.02f
+            Matrix.rotateM(
+                    model,
+                    0,
+                    armAngle,
+                    1,
+                    0,
+                    0
+            );
+
+            Matrix.scaleM(
+                    model,
+                    0,
+                    0.65f,
+                    0.65f,
+                    4.0f
+            );
+
+            drawCurrentModel(
+                    0.92f,
+                    0.55f,
+                    0.02f
+            );
+
+            // =====================
+            // الذراع الثاني
+            // =====================
+
+            Matrix.setIdentityM(model, 0);
+
+            Matrix.translateM(
+                    model,
+                    0,
+                    x,
+                    1.7f,
+                    z + 4.8f
+            );
+
+            Matrix.rotateM(
+                    model,
+                    0,
+                    -bucketAngle,
+                    1,
+                    0,
+                    0
+            );
+
+            Matrix.scaleM(
+                    model,
+                    0,
+                    0.50f,
+                    0.50f,
+                    2.8f
+            );
+
+            drawCurrentModel(
+                    0.90f,
+                    0.52f,
+                    0.02f
+            );
+
+            // =====================
+            // الدلو
+            // =====================
+
+            cube(
+                    x,
+                    0.75f,
+                    z + 7.0f,
+                    2.2f,
+                    1.3f,
+                    1.6f,
+                    0.82f,
+                    0.46f,
+                    0.02f
             );
         }
 
-        private void updateExcavator() {
+        private void updateMachine() {
 
-            if (moveForward) {
-                excavatorZ -= speed;
-            }
+            if (forward)
+                machineZ -= speed;
 
-            if (moveBackward) {
-                excavatorZ += speed;
-            }
+            if (backward)
+                machineZ += speed;
 
-            if (moveLeft) {
-                excavatorX -= speed;
-            }
+            if (left)
+                machineX -= speed;
 
-            if (moveRight) {
-                excavatorX += speed;
-            }
+            if (right)
+                machineX += speed;
 
-            excavatorX =
+            machineX =
                     Math.max(
-                            -18f,
-                            Math.min(
-                                    18f,
-                                    excavatorX
-                            )
+                            -20f,
+                            Math.min(20f, machineX)
                     );
 
-            excavatorZ =
+            machineZ =
                     Math.max(
-                            -18f,
-                            Math.min(
-                                    18f,
-                                    excavatorZ
-                            )
+                            -20f,
+                            Math.min(20f, machineZ)
                     );
         }
 
-        private void stopMovement() {
+        private void stop() {
 
-            moveLeft = false;
-            moveRight = false;
-            moveForward = false;
-            moveBackward = false;
+            left = false;
+            right = false;
+            forward = false;
+            backward = false;
         }
 
-        private void drawCube(
+        private void cube(
                 float x,
                 float y,
                 float z,
@@ -571,6 +689,14 @@ public class Game3DView extends GLSurfaceView {
                     sy,
                     sz
             );
+
+            drawCurrentModel(r, g, b);
+        }
+
+        private void drawCurrentModel(
+                float r,
+                float g,
+                float b) {
 
             Matrix.multiplyMM(
                     temp,
@@ -608,7 +734,7 @@ public class Game3DView extends GLSurfaceView {
                     1f
             );
 
-            cubeVertices.position(0);
+            cube.position(0);
 
             GLES20.glEnableVertexAttribArray(
                     positionHandle
@@ -620,7 +746,7 @@ public class Game3DView extends GLSurfaceView {
                     GLES20.GL_FLOAT,
                     false,
                     12,
-                    cubeVertices
+                    cube
             );
 
             GLES20.glDrawArrays(
