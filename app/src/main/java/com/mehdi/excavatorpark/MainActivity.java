@@ -14,20 +14,4 @@ public class MainActivity extends Activity {
         gameView = new Game3DView(this);
         setContentView(gameView);
     }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (gameView != null) {
-            gameView.onResume();
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        if (gameView != null) {
-            gameView.onPause();
-        }
-        super.onPause();
-    }
 }
