@@ -2,31 +2,34 @@ package com.mehdi.excavatorpark;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.graphics.Color;
-import android.view.Gravity;
-import android.widget.TextView;
 
 public class MainActivity extends Activity {
+
+    private Game3DView gameView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        TextView screen = new TextView(this);
+        gameView = new Game3DView(this);
+        setContentView(gameView);
+    }
 
-        screen.setText(
-                "🚜 EXCAVATOR PARK\n\n" +
-                "مهمة 1\n" +
-                "احفر منطقة البارك\n\n" +
-                "المهمة طويلة ومتعددة المراحل\n\n" +
-                "ابدأ الحفر!"
-        );
+    @Override
+    protected void onResume() {
+        super.onResume();
 
-        screen.setTextSize(28);
-        screen.setTextColor(Color.WHITE);
-        screen.setGravity(Gravity.CENTER);
-        screen.setBackgroundColor(Color.rgb(45, 35, 25));
+        if (gameView != null) {
+            gameView.onResume();
+        }
+    }
 
-        setContentView(screen);
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        if (gameView != null) {
+            gameView.onPause();
+        }
     }
 }
