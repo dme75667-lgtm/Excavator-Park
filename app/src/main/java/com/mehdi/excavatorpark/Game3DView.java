@@ -15,14 +15,14 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class Game3DView extends GLSurfaceView {
 
-    private final Renderer renderer;
+    private final GameRenderer renderer;
 
     public Game3DView(Context context) {
         super(context);
 
         setEGLContextClientVersion(2);
 
-        renderer = new Renderer();
+        renderer = new GameRenderer();
         setRenderer(renderer);
         setRenderMode(RENDERMODE_CONTINUOUSLY);
     }
@@ -39,32 +39,33 @@ public class Game3DView extends GLSurfaceView {
         if (event.getAction() == MotionEvent.ACTION_DOWN ||
                 event.getAction() == MotionEvent.ACTION_MOVE) {
 
-            renderer.forward = false;
-            renderer.backward = false;
-            renderer.left = false;
-            renderer.right = false;
-            renderer.armUp = false;
-            renderer.armDown = false;
-            renderer.bucketOpen = false;
-            renderer.bucketClose = false;
+            renderer.clearButtons();
 
-            // حركة الحفارة
-            if (x < w * 0.25f && y > h * 0.65f) {
-                renderer.left = true;
-            } else if (x > w * 0.75f && y > h * 0.65f) {
-                renderer.right = true;
-            } else if (x > w * 0.35f && x < w * 0.65f && y > h * 0.70f) {
-                renderer.forward = true;
-            } else if (x > w * 0.35f && x < w * 0.65f && y < h * 0.45f) {
+            // الحركة
+            if (y > h * 0.72f) {
+
+                if (x < w * 0.30f) {
+                    renderer.left = true;
+                } else if (x > w * 0.70f) {
+                    renderer.right = true;
+                } else {
+                    renderer.forward = true;
+                }
+            }
+
+            // الرجوع
+            if (y < h * 0.30f &&
+                    x > w * 0.35f &&
+                    x < w * 0.65f) {
                 renderer.backward = true;
             }
 
             // الذراع
-            if (x < w * 0.25f && y < h * 0.45f) {
+            if (x < w * 0.30f && y < h * 0.55f) {
                 renderer.armUp = true;
             }
 
-            if (x > w * 0.75f && y < h * 0.45f) {
+            if (x > w * 0.70f && y < h * 0.55f) {
                 renderer.armDown = true;
             }
 
@@ -72,7 +73,7 @@ public class Game3DView extends GLSurfaceView {
             if (x > w * 0.35f &&
                     x < w * 0.65f &&
                     y > h * 0.45f &&
-                    y < h * 0.70f) {
+                    y < h * 0.72f) {
 
                 if (x < w * 0.50f) {
                     renderer.bucketOpen = true;
@@ -85,36 +86,37 @@ public class Game3DView extends GLSurfaceView {
         }
 
         if (event.getAction() == MotionEvent.ACTION_UP) {
-            renderer.stop();
+            renderer.clearButtons();
             return true;
         }
 
         return true;
     }
 
-    private static class Renderer implements GLSurfaceView.Renderer {
+    private static class GameRenderer implements GLSurfaceView.Renderer {
 
         private final float[] projection = new float[16];
         private final float[] view = new float[16];
         private final float[] model = new float[16];
-        private final float[] temp = new float[16];
         private final float[] mvp = new float[16];
 
-        private FloatBuffer vertices;
+        private FloatBuffer cubeBuffer;
 
         private int program;
         private int positionHandle;
         private int colorHandle;
         private int mvpHandle;
 
-        private float x = 0f;
-        private float z = 5f;
+        private float playerX = 0f;
+        private float playerZ = 8f;
 
         private float rotation = 0f;
 
-        private float armAngle = -18f;
-        private float secondArm = 22f;
-        private float bucketAngle = 25f;
+        private float boomAngle = -25f;
+        private float stickAngle = 25f;
+        private float bucketAngle = 20f;
+
+        private float wheelRotation = 0f;
 
         boolean forward;
         boolean backward;
@@ -127,57 +129,55 @@ public class Game3DView extends GLSurfaceView {
         boolean bucketOpen;
         boolean bucketClose;
 
-        private final float speed = 0.055f;
-
         private final float[] cube = {
 
-                -0.5f,-0.5f, 0.5f,
-                 0.5f,-0.5f, 0.5f,
-                 0.5f, 0.5f, 0.5f,
+                -1,-1,-1,
+                 1,-1,-1,
+                 1, 1,-1,
 
-                -0.5f,-0.5f, 0.5f,
-                 0.5f, 0.5f, 0.5f,
-                -0.5f, 0.5f, 0.5f,
+                -1,-1,-1,
+                 1, 1,-1,
+                -1, 1,-1,
 
-                 0.5f,-0.5f,-0.5f,
-                -0.5f,-0.5f,-0.5f,
-                -0.5f, 0.5f,-0.5f,
+                -1,-1, 1,
+                 1,-1, 1,
+                 1, 1, 1,
 
-                 0.5f,-0.5f,-0.5f,
-                -0.5f, 0.5f,-0.5f,
-                 0.5f, 0.5f,-0.5f,
+                -1,-1, 1,
+                 1, 1, 1,
+                -1, 1, 1,
 
-                -0.5f,-0.5f,-0.5f,
-                -0.5f,-0.5f, 0.5f,
-                -0.5f, 0.5f, 0.5f,
+                -1,-1,-1,
+                -1, 1,-1,
+                -1, 1, 1,
 
-                -0.5f,-0.5f,-0.5f,
-                -0.5f, 0.5f, 0.5f,
-                -0.5f, 0.5f,-0.5f,
+                -1,-1,-1,
+                -1, 1, 1,
+                -1,-1, 1,
 
-                 0.5f,-0.5f, 0.5f,
-                 0.5f,-0.5f,-0.5f,
-                 0.5f, 0.5f,-0.5f,
+                 1,-1,-1,
+                 1, 1,-1,
+                 1, 1, 1,
 
-                 0.5f,-0.5f, 0.5f,
-                 0.5f, 0.5f,-0.5f,
-                 0.5f, 0.5f, 0.5f,
+                 1,-1,-1,
+                 1, 1, 1,
+                 1,-1, 1,
 
-                -0.5f, 0.5f, 0.5f,
-                 0.5f, 0.5f, 0.5f,
-                 0.5f, 0.5f,-0.5f,
+                -1,1,-1,
+                 1,1,-1,
+                 1,1,1,
 
-                -0.5f, 0.5f, 0.5f,
-                 0.5f, 0.5f,-0.5f,
-                -0.5f, 0.5f,-0.5f,
+                -1,1,-1,
+                 1,1,1,
+                -1,1,1,
 
-                -0.5f,-0.5f,-0.5f,
-                 0.5f,-0.5f,-0.5f,
-                 0.5f,-0.5f, 0.5f,
+                -1,-1,-1,
+                 1,-1,-1,
+                 1,-1,1,
 
-                -0.5f,-0.5f,-0.5f,
-                 0.5f,-0.5f, 0.5f,
-                -0.5f,-0.5f, 0.5f
+                -1,-1,-1,
+                 1,-1,1,
+                -1,-1,1
         };
 
         @Override
@@ -191,57 +191,62 @@ public class Game3DView extends GLSurfaceView {
             );
 
             GLES20.glEnable(GLES20.GL_DEPTH_TEST);
+
             GLES20.glEnable(GLES20.GL_CULL_FACE);
 
-            ByteBuffer buffer =
+            ByteBuffer bb =
                     ByteBuffer.allocateDirect(cube.length * 4);
 
-            buffer.order(ByteOrder.nativeOrder());
+            bb.order(ByteOrder.nativeOrder());
 
-            vertices = buffer.asFloatBuffer();
-            vertices.put(cube);
-            vertices.position(0);
+            cubeBuffer = bb.asFloatBuffer();
+
+            cubeBuffer.put(cube);
+            cubeBuffer.position(0);
 
             String vertexShader =
                     "uniform mat4 uMVP;" +
-                    "attribute vec4 position;" +
+                    "attribute vec4 aPosition;" +
                     "void main(){" +
-                    "gl_Position=uMVP*position;" +
+                    "gl_Position=uMVP*aPosition;" +
                     "}";
 
             String fragmentShader =
                     "precision mediump float;" +
-                    "uniform vec4 color;" +
+                    "uniform vec4 uColor;" +
                     "void main(){" +
-                    "gl_FragColor=color;" +
+                    "gl_FragColor=uColor;" +
                     "}";
 
-            int vs = loadShader(
-                    GLES20.GL_VERTEX_SHADER,
-                    vertexShader
-            );
+            int vertex =
+                    loadShader(
+                            GLES20.GL_VERTEX_SHADER,
+                            vertexShader
+                    );
 
-            int fs = loadShader(
-                    GLES20.GL_FRAGMENT_SHADER,
-                    fragmentShader
-            );
+            int fragment =
+                    loadShader(
+                            GLES20.GL_FRAGMENT_SHADER,
+                            fragmentShader
+                    );
 
             program = GLES20.glCreateProgram();
 
-            GLES20.glAttachShader(program, vs);
-            GLES20.glAttachShader(program, fs);
+            GLES20.glAttachShader(program, vertex);
+            GLES20.glAttachShader(program, fragment);
+
             GLES20.glLinkProgram(program);
 
             positionHandle =
                     GLES20.glGetAttribLocation(
                             program,
-                            "position"
+                            "aPosition"
                     );
 
             colorHandle =
                     GLES20.glGetUniformLocation(
                             program,
-                            "color"
+                            "uColor"
                     );
 
             mvpHandle =
@@ -255,7 +260,8 @@ public class Game3DView extends GLSurfaceView {
         public void onSurfaceChanged(
                 GL10 gl,
                 int width,
-                int height) {
+                int height
+        ) {
 
             if (height == 0)
                 height = 1;
@@ -268,17 +274,16 @@ public class Game3DView extends GLSurfaceView {
             );
 
             float ratio =
-                    (float) width / (float) height;
+                    (float) width /
+                    (float) height;
 
-            Matrix.frustumM(
+            Matrix.perspectiveM(
                     projection,
                     0,
-                    -ratio,
+                    60f,
                     ratio,
-                    -1f,
                     1f,
-                    2f,
-                    180f
+                    250f
             );
         }
 
@@ -292,15 +297,30 @@ public class Game3DView extends GLSurfaceView {
 
             update();
 
+            // كاميرا خلف الحفارة
+            float cameraDistance = 18f;
+
+            float camX =
+                    playerX -
+                    (float)Math.sin(
+                            Math.toRadians(rotation)
+                    ) * cameraDistance;
+
+            float camZ =
+                    playerZ -
+                    (float)Math.cos(
+                            Math.toRadians(rotation)
+                    ) * cameraDistance;
+
             Matrix.setLookAtM(
                     view,
                     0,
-                    x,
-                    7.5f,
-                    z + 14f,
-                    x,
-                    1.5f,
-                    z,
+                    camX,
+                    10f,
+                    camZ,
+                    playerX,
+                    1.8f,
+                    playerZ,
                     0f,
                     1f,
                     0f
@@ -312,336 +332,583 @@ public class Game3DView extends GLSurfaceView {
 
         private void update() {
 
-            if (forward)
-                z -= speed;
+            float speed = 0.12f;
 
-            if (backward)
-                z += speed;
+            if (forward) {
+
+                playerX +=
+                        (float)Math.sin(
+                                Math.toRadians(rotation)
+                        ) * speed;
+
+                playerZ +=
+                        (float)Math.cos(
+                                Math.toRadians(rotation)
+                        ) * speed;
+
+                wheelRotation += 8f;
+            }
+
+            if (backward) {
+
+                playerX -=
+                        (float)Math.sin(
+                                Math.toRadians(rotation)
+                        ) * speed;
+
+                playerZ -=
+                        (float)Math.cos(
+                                Math.toRadians(rotation)
+                        ) * speed;
+
+                wheelRotation -= 8f;
+            }
 
             if (left) {
-                x -= speed;
-                rotation -= 1.2f;
+                rotation -= 2.2f;
             }
 
             if (right) {
-                x += speed;
-                rotation += 1.2f;
+                rotation += 2.2f;
             }
 
             if (armUp) {
-                armAngle -= 0.7f;
-                secondArm += 0.45f;
+
+                boomAngle -= 0.8f;
+                stickAngle += 0.5f;
             }
 
             if (armDown) {
-                armAngle += 0.7f;
-                secondArm -= 0.45f;
+
+                boomAngle += 0.8f;
+                stickAngle -= 0.5f;
             }
 
-            if (bucketOpen)
-                bucketAngle += 1.0f;
+            if (bucketOpen) {
+                bucketAngle += 1.2f;
+            }
 
-            if (bucketClose)
-                bucketAngle -= 1.0f;
+            if (bucketClose) {
+                bucketAngle -= 1.2f;
+            }
 
-            armAngle = Math.max(-55f, Math.min(35f, armAngle));
-            secondArm = Math.max(-30f, Math.min(70f, secondArm));
-            bucketAngle = Math.max(-45f, Math.min(75f, bucketAngle));
+            boomAngle =
+                    Math.max(
+                            -60f,
+                            Math.min(
+                                    20f,
+                                    boomAngle
+                            )
+                    );
 
-            x = Math.max(-20f, Math.min(20f, x));
-            z = Math.max(-25f, Math.min(25f, z));
+            stickAngle =
+                    Math.max(
+                            -20f,
+                            Math.min(
+                                    75f,
+                                    stickAngle
+                            )
+                    );
+
+            bucketAngle =
+                    Math.max(
+                            -60f,
+                            Math.min(
+                                    80f,
+                                    bucketAngle
+                            )
+                    );
+
+            playerX =
+                    Math.max(
+                            -45f,
+                            Math.min(
+                                    45f,
+                                    playerX
+                            )
+                    );
+
+            playerZ =
+                    Math.max(
+                            -45f,
+                            Math.min(
+                                    45f,
+                                    playerZ
+                            )
+                    );
         }
 
         private void drawWorld() {
 
-            // الأرض
+            // أرض كبيرة
             box(
-                    0f,-0.8f,0f,
-                    60f,1f,60f,
-                    0.24f,0.52f,0.18f
+                    0,
+                    -1.5f,
+                    0,
+                    55,
+                    1,
+                    55,
+                    0.20f,
+                    0.48f,
+                    0.18f
             );
 
-            // طريق
+            // الطريق
             box(
-                    0f,-0.20f,0f,
-                    9f,0.18f,55f,
-                    0.10f,0.10f,0.10f
+                    0,
+                    -0.35f,
+                    0,
+                    7,
+                    0.15f,
+                    55,
+                    0.12f,
+                    0.12f,
+                    0.12f
             );
 
             // خطوط الطريق
-            for (int i = -25; i <= 25; i += 5) {
+            for (int z = -45; z <= 45; z += 8) {
 
                 box(
-                        0f,-0.08f,i,
-                        0.28f,0.05f,2.1f,
-                        1f,0.82f,0.05f
+                        0,
+                        -0.15f,
+                        z,
+                        0.15f,
+                        0.05f,
+                        3,
+                        0.9f,
+                        0.75f,
+                        0.15f
                 );
             }
 
             // منطقة الحفر
             box(
-                    14f,-0.15f,-8f,
-                    13f,0.35f,12f,
-                    0.38f,0.24f,0.10f
+                    18,
+                    -0.20f,
+                    5,
+                    13,
+                    0.20f,
+                    13,
+                    0.35f,
+                    0.20f,
+                    0.08f
             );
 
-            // تراب
-            box(
-                    11f,0.75f,-8f,
-                    3.5f,1.5f,3f,
-                    0.45f,0.29f,0.10f
-            );
+            // أكوام التراب
+            dirtPile(18, 3);
+            dirtPile(22, 8);
+            dirtPile(15, 10);
 
-            box(
-                    18f,0.9f,-6f,
-                    3.5f,1.8f,3f,
-                    0.42f,0.27f,0.09f
-            );
+            // حواجز
+            for (int z = -25; z <= 25; z += 10) {
+
+                box(
+                        -12,
+                        0.5f,
+                        z,
+                        0.25f,
+                        1f,
+                        0.25f,
+                        0.9f,
+                        0.45f,
+                        0.05f
+                );
+            }
 
             // أشجار
-            tree(-18f,-12f);
-            tree(18f,-15f);
-            tree(-18f,13f);
-            tree(18f,15f);
+            tree(-25, -20);
+            tree(-30, 5);
+            tree(30, -15);
+            tree(28, 25);
 
             // صخور
+            rock(-18, 15);
+            rock(25, -5);
+            rock(-30, 30);
+        }
+
+        private void dirtPile(
+                float x,
+                float z
+        ) {
+
             box(
-                    -11f,0.3f,-7f,
-                    3f,1.6f,2.5f,
-                    0.30f,0.30f,0.28f
+                    x,
+                    0.7f,
+                    z,
+                    3.2f,
+                    1.3f,
+                    2.4f,
+                    0.35f,
+                    0.20f,
+                    0.07f
+            );
+
+            box(
+                    x + 1.5f,
+                    0.35f,
+                    z,
+                    2.0f,
+                    0.7f,
+                    1.7f,
+                    0.30f,
+                    0.16f,
+                    0.05f
             );
         }
 
-        private void tree(float tx, float tz) {
+        private void tree(
+                float x,
+                float z
+        ) {
 
             box(
-                    tx,1.2f,tz,
-                    0.7f,2.5f,0.7f,
-                    0.34f,0.18f,0.06f
+                    x,
+                    1.8f,
+                    z,
+                    0.45f,
+                    2f,
+                    0.45f,
+                    0.30f,
+                    0.16f,
+                    0.05f
             );
 
             box(
-                    tx,3.0f,tz,
-                    3f,3f,3f,
-                    0.06f,0.42f,0.08f
+                    x,
+                    4f,
+                    z,
+                    2.2f,
+                    2.2f,
+                    2.2f,
+                    0.05f,
+                    0.38f,
+                    0.08f
+            );
+        }
+
+        private void rock(
+                float x,
+                float z
+        ) {
+
+            box(
+                    x,
+                    0.6f,
+                    z,
+                    1.5f,
+                    0.8f,
+                    1.3f,
+                    0.30f,
+                    0.30f,
+                    0.30f
             );
         }
 
         private void drawExcavator() {
 
+            // جسم الحفارة
+            Matrix.setIdentityM(model, 0, 1);
+
+            Matrix.translateM(
+                    model,
+                    0,
+                    playerX,
+                    0,
+                    playerZ
+            );
+
+            Matrix.rotateM(
+                    model,
+                    0,
+                    rotation,
+                    0,
+                    1,
+                    0
+            );
+
+            drawLocal(
+                    0,
+                    1.2f,
+                    0,
+                    3.2f,
+                    0.65f,
+                    2.3f,
+                    0.85f,
+                    0.52f,
+                    0.04f
+            );
+
             // الجنزير الأيسر
-            box(
-                    x - 1.15f,
-                    0.35f,
-                    z,
-                    1.15f,
-                    0.75f,
-                    3.7f,
-                    0.055f,
-                    0.055f,
-                    0.05f
+            drawLocal(
+                    -2.0f,
+                    0.45f,
+                    0,
+                    1.1f,
+                    0.55f,
+                    2.7f,
+                    0.08f,
+                    0.08f,
+                    0.07f
             );
 
             // الجنزير الأيمن
-            box(
-                    x + 1.15f,
-                    0.35f,
-                    z,
-                    1.15f,
-                    0.75f,
-                    3.7f,
-                    0.055f,
-                    0.055f,
+            drawLocal(
+                    2.0f,
+                    0.45f,
+                    0,
+                    1.1f,
+                    0.55f,
+                    2.7f,
+                    0.08f,
+                    0.08f,
+                    0.07f
+            );
+
+            // قاعدة علوية
+            drawLocal(
+                    0,
+                    2.0f,
+                    0,
+                    2.4f,
+                    0.45f,
+                    1.9f,
+                    0.90f,
+                    0.58f,
                     0.05f
             );
 
-            // القاعدة
-            box(
-                    x,
-                    0.95f,
-                    z,
-                    3.1f,
-                    0.45f,
-                    2.6f,
-                    0.92f,
-                    0.55f,
-                    0.02f
-            );
-
-            // جسم الحفارة
-            box(
-                    x,
-                    1.5f,
-                    z,
-                    2.65f,
-                    1.0f,
-                    2.35f,
-                    0.95f,
-                    0.58f,
-                    0.025f
-            );
-
-            // الكابينة
-            box(
-                    x - 0.45f,
-                    2.55f,
-                    z - 0.25f,
-                    1.75f,
-                    1.8f,
-                    1.7f,
-                    0.08f,
-                    0.10f,
-                    0.12f
-            );
-
-            // الزجاج الأمامي
-            box(
-                    x - 0.45f,
-                    2.65f,
-                    z - 1.15f,
-                    1.35f,
+            // كابينة
+            drawLocal(
+                    0.8f,
+                    3.5f,
+                    0,
                     1.15f,
+                    1.4f,
+                    1.45f,
+                    0.12f,
+                    0.16f,
+                    0.18f
+            );
+
+            // زجاج أمامي
+            drawLocal(
+                    0.8f,
+                    3.7f,
+                    -0.78f,
+                    0.9f,
+                    0.8f,
                     0.08f,
-                    0.05f,
-                    0.30f,
-                    0.42f
+                    0.08f,
+                    0.35f,
+                    0.55f
             );
 
             // سقف
-            box(
-                    x - 0.45f,
-                    3.55f,
-                    z - 0.25f,
-                    1.95f,
+            drawLocal(
+                    0.8f,
+                    5.05f,
+                    0,
+                    1.3f,
                     0.18f,
-                    1.9f,
-                    0.88f,
-                    0.52f,
+                    1.6f,
+                    0.95f,
+                    0.55f,
+                    0.03f
+            );
+
+            // boom
+            Matrix.pushMatrix(model);
+
+            Matrix.translateM(
+                    model,
+                    0,
+                    -0.8f,
+                    3.0f,
+                    0
+            );
+
+            Matrix.rotateM(
+                    model,
+                    0,
+                    boomAngle,
+                    0,
+                    0,
+                    1
+            );
+
+            drawLocalMatrix(
+                    2.8f,
+                    0.38f,
+                    0.45f,
+                    0.90f,
+                    0.60f,
+                    0.08f,
+                    0.45f,
+                    0.10f,
                     0.02f
             );
 
-            // الذراع الرئيسي
-            Matrix.setIdentityM(model, 0);
+            Matrix.popMatrix(model);
+
+            // stick
+            Matrix.pushMatrix(model);
 
             Matrix.translateM(
                     model,
                     0,
-                    x,
-                    2.45f,
-                    z + 2.0f
+                    -3.1f,
+                    2.0f,
+                    0
             );
 
             Matrix.rotateM(
                     model,
                     0,
-                    armAngle,
-                    1f,
-                    0f,
-                    0f
-            );
-
-            Matrix.scaleM(
-                    model,
+                    stickAngle,
                     0,
-                    0.65f,
-                    0.65f,
-                    4.2f
-            );
-
-            current(
-                    0.92f,
-                    0.53f,
-                    0.015f
-            );
-
-            // الذراع الثاني
-            Matrix.setIdentityM(model, 0);
-
-            Matrix.translateM(
-                    model,
                     0,
-                    x,
-                    1.7f,
-                    z + 5.3f
+                    1
             );
 
-            Matrix.rotateM(
-                    model,
-                    0,
-                    -secondArm,
-                    1f,
-                    0f,
-                    0f
-            );
-
-            Matrix.scaleM(
-                    model,
-                    0,
-                    0.48f,
-                    0.48f,
-                    3.0f
-            );
-
-            current(
+            drawLocalMatrix(
+                    2.2f,
+                    0.30f,
+                    0.40f,
                     0.88f,
-                    0.48f,
-                    0.015f
+                    0.52f,
+                    0.03f,
+                    0.35f,
+                    0.08f,
+                    0.01f
             );
+
+            Matrix.popMatrix(model);
 
             // الدلو
-            Matrix.setIdentityM(model, 0);
+            Matrix.pushMatrix(model);
 
             Matrix.translateM(
                     model,
                     0,
-                    x,
-                    0.55f,
-                    z + 8.0f
+                    -4.8f,
+                    0.7f,
+                    0
             );
 
             Matrix.rotateM(
                     model,
                     0,
                     bucketAngle,
-                    1f,
-                    0f,
-                    0f
-            );
-
-            Matrix.scaleM(
-                    model,
                     0,
-                    2.3f,
-                    1.25f,
-                    1.5f
+                    0,
+                    1
             );
 
-            current(
-                    0.78f,
-                    0.40f,
-                    0.015f
+            drawLocalMatrix(
+                    0,
+                    0,
+                    0,
+                    1.5f,
+                    0.8f,
+                    1.2f,
+                    0.72f,
+                    0.38f,
+                    0.04f
             );
+
+            Matrix.popMatrix(model);
         }
 
-        private void box(
-                float px,
-                float py,
-                float pz,
+        private void drawLocal(
+                float x,
+                float y,
+                float z,
                 float sx,
                 float sy,
                 float sz,
                 float r,
                 float g,
-                float b) {
+                float b
+        ) {
+
+            Matrix.pushMatrix(model);
+
+            Matrix.translateM(
+                    model,
+                    0,
+                    x,
+                    y,
+                    z
+            );
+
+            drawLocalMatrix(
+                    0,
+                    0,
+                    0,
+                    sx,
+                    sy,
+                    sz,
+                    r,
+                    g,
+                    b
+            );
+
+            Matrix.popMatrix(model);
+        }
+
+        private void drawLocalMatrix(
+                float x,
+                float y,
+                float z,
+                float sx,
+                float sy,
+                float sz,
+                float r,
+                float g,
+                float b
+        ) {
+
+            Matrix.translateM(
+                    model,
+                    0,
+                    x,
+                    y,
+                    z
+            );
+
+            Matrix.scaleM(
+                    model,
+                    0,
+                    sx,
+                    sy,
+                    sz
+            );
+
+            current(r, g, b);
+        }
+
+        private void box(
+                float x,
+                float y,
+                float z,
+                float sx,
+                float sy,
+                float sz,
+                float r,
+                float g,
+                float b
+        ) {
 
             Matrix.setIdentityM(model, 0);
 
             Matrix.translateM(
                     model,
                     0,
-                    px,
-                    py,
-                    pz
+                    x,
+                    y,
+                    z
             );
 
             Matrix.scaleM(
@@ -658,10 +925,11 @@ public class Game3DView extends GLSurfaceView {
         private void current(
                 float r,
                 float g,
-                float b) {
+                float b
+        ) {
 
             Matrix.multiplyMM(
-                    temp,
+                    mvp,
                     0,
                     view,
                     0,
@@ -674,18 +942,25 @@ public class Game3DView extends GLSurfaceView {
                     0,
                     projection,
                     0,
-                    temp,
+                    mvp,
                     0
             );
 
             GLES20.glUseProgram(program);
 
-            GLES20.glUniformMatrix4fv(
-                    mvpHandle,
-                    1,
+            GLES20.glEnableVertexAttribArray(
+                    positionHandle
+            );
+
+            cubeBuffer.position(0);
+
+            GLES20.glVertexAttribPointer(
+                    positionHandle,
+                    3,
+                    GLES20.GL_FLOAT,
                     false,
-                    mvp,
-                    0
+                    0,
+                    cubeBuffer
             );
 
             GLES20.glUniform4f(
@@ -696,19 +971,12 @@ public class Game3DView extends GLSurfaceView {
                     1f
             );
 
-            vertices.position(0);
-
-            GLES20.glEnableVertexAttribArray(
-                    positionHandle
-            );
-
-            GLES20.glVertexAttribPointer(
-                    positionHandle,
-                    3,
-                    GLES20.GL_FLOAT,
+            GLES20.glUniformMatrix4fv(
+                    mvpHandle,
+                    1,
                     false,
-                    12,
-                    vertices
+                    mvp,
+                    0
             );
 
             GLES20.glDrawArrays(
@@ -722,7 +990,7 @@ public class Game3DView extends GLSurfaceView {
             );
         }
 
-        private void stop() {
+        private void clearButtons() {
 
             forward = false;
             backward = false;
@@ -738,7 +1006,8 @@ public class Game3DView extends GLSurfaceView {
 
         private int loadShader(
                 int type,
-                String code) {
+                String code
+        ) {
 
             int shader =
                     GLES20.glCreateShader(type);
@@ -752,5 +1021,43 @@ public class Game3DView extends GLSurfaceView {
 
             return shader;
         }
+
+        // Matrix stack بسيط
+        private final float[][] matrixStack =
+                new float[16][16];
+
+        private int stackIndex = 0;
+
+        private void pushMatrix(float[] source) {
+
+            if (stackIndex < 16) {
+
+                System.arraycopy(
+                        source,
+                        0,
+                        matrixStack[stackIndex],
+                        0,
+                        16
+                );
+
+                stackIndex++;
+            }
+        }
+
+        private void popMatrix(float[] destination) {
+
+            if (stackIndex > 0) {
+
+                stackIndex--;
+
+                System.arraycopy(
+                        matrixStack[stackIndex],
+                        0,
+                        destination,
+                        0,
+                        16
+                );
+            }
+        }
     }
-                }
+        }
