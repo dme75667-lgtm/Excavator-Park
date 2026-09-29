@@ -15,16 +15,15 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class Game3DView extends GLSurfaceView {
 
-    private final Renderer3D renderer;
+    private final Renderer renderer;
 
     public Game3DView(Context context) {
         super(context);
 
         setEGLContextClientVersion(2);
 
-        renderer = new Renderer3D();
+        renderer = new Renderer();
         setRenderer(renderer);
-
         setRenderMode(RENDERMODE_CONTINUOUSLY);
     }
 
@@ -40,10 +39,9 @@ public class Game3DView extends GLSurfaceView {
         if (event.getAction() == MotionEvent.ACTION_DOWN ||
                 event.getAction() == MotionEvent.ACTION_MOVE) {
 
-            renderer.left  = x < w * 0.25f;
+            renderer.left = x < w * 0.25f;
             renderer.right = x > w * 0.75f;
-
-            renderer.forward  = y < h * 0.45f;
+            renderer.forward = y < h * 0.45f;
             renderer.backward = y > h * 0.70f;
 
             return true;
@@ -57,7 +55,7 @@ public class Game3DView extends GLSurfaceView {
         return true;
     }
 
-    private static class Renderer3D implements GLSurfaceView.Renderer {
+    private static class Renderer implements GLSurfaceView.Renderer {
 
         private final float[] projection = new float[16];
         private final float[] view = new float[16];
@@ -65,18 +63,18 @@ public class Game3DView extends GLSurfaceView {
         private final float[] temp = new float[16];
         private final float[] mvp = new float[16];
 
-        private FloatBuffer cube;
+        private FloatBuffer vertices;
 
         private int program;
         private int positionHandle;
         private int colorHandle;
         private int mvpHandle;
 
-        private float machineX = 0f;
-        private float machineZ = 4f;
+        private float x = 0f;
+        private float z = 4f;
 
-        private float armAngle = -15f;
-        private float bucketAngle = 20f;
+        private float arm = -12f;
+        private float bucket = 18f;
 
         private final float speed = 0.045f;
 
@@ -85,84 +83,72 @@ public class Game3DView extends GLSurfaceView {
         boolean forward;
         boolean backward;
 
-        private final float[] vertices = {
+        private final float[] cube = {
 
-                // Front
                 -0.5f,-0.5f, 0.5f,
                  0.5f,-0.5f, 0.5f,
                  0.5f, 0.5f, 0.5f,
-
                 -0.5f,-0.5f, 0.5f,
                  0.5f, 0.5f, 0.5f,
                 -0.5f, 0.5f, 0.5f,
 
-                // Back
                  0.5f,-0.5f,-0.5f,
                 -0.5f,-0.5f,-0.5f,
                 -0.5f, 0.5f,-0.5f,
-
                  0.5f,-0.5f,-0.5f,
                 -0.5f, 0.5f,-0.5f,
                  0.5f, 0.5f,-0.5f,
 
-                // Left
                 -0.5f,-0.5f,-0.5f,
                 -0.5f,-0.5f, 0.5f,
                 -0.5f, 0.5f, 0.5f,
-
                 -0.5f,-0.5f,-0.5f,
                 -0.5f, 0.5f, 0.5f,
                 -0.5f, 0.5f,-0.5f,
 
-                // Right
                  0.5f,-0.5f, 0.5f,
                  0.5f,-0.5f,-0.5f,
                  0.5f, 0.5f,-0.5f,
-
                  0.5f,-0.5f, 0.5f,
                  0.5f, 0.5f,-0.5f,
                  0.5f, 0.5f, 0.5f,
 
-                // Top
-                -0.5f,0.5f,0.5f,
-                 0.5f,0.5f,0.5f,
-                 0.5f,0.5f,-0.5f,
+                -0.5f, 0.5f, 0.5f,
+                 0.5f, 0.5f, 0.5f,
+                 0.5f, 0.5f,-0.5f,
+                -0.5f, 0.5f, 0.5f,
+                 0.5f, 0.5f,-0.5f,
+                -0.5f, 0.5f,-0.5f,
 
-                -0.5f,0.5f,0.5f,
-                 0.5f,0.5f,-0.5f,
-                -0.5f,0.5f,-0.5f,
-
-                // Bottom
                 -0.5f,-0.5f,-0.5f,
                  0.5f,-0.5f,-0.5f,
-                 0.5f,-0.5f,0.5f,
-
+                 0.5f,-0.5f, 0.5f,
                 -0.5f,-0.5f,-0.5f,
-                 0.5f,-0.5f,0.5f,
-                -0.5f,-0.5f,0.5f
+                 0.5f,-0.5f, 0.5f,
+                -0.5f,-0.5f, 0.5f
         };
 
         @Override
         public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 
             GLES20.glClearColor(
-                    0.48f,
-                    0.70f,
-                    0.88f,
+                    0.50f,
+                    0.72f,
+                    0.90f,
                     1f
             );
 
             GLES20.glEnable(GLES20.GL_DEPTH_TEST);
             GLES20.glEnable(GLES20.GL_CULL_FACE);
 
-            ByteBuffer bb =
-                    ByteBuffer.allocateDirect(vertices.length * 4);
+            ByteBuffer buffer =
+                    ByteBuffer.allocateDirect(cube.length * 4);
 
-            bb.order(ByteOrder.nativeOrder());
+            buffer.order(ByteOrder.nativeOrder());
 
-            cube = bb.asFloatBuffer();
-            cube.put(vertices);
-            cube.position(0);
+            vertices = buffer.asFloatBuffer();
+            vertices.put(cube);
+            vertices.position(0);
 
             String vertexShader =
                     "uniform mat4 uMVP;" +
@@ -192,7 +178,6 @@ public class Game3DView extends GLSurfaceView {
 
             GLES20.glAttachShader(program, vs);
             GLES20.glAttachShader(program, fs);
-
             GLES20.glLinkProgram(program);
 
             positionHandle =
@@ -231,17 +216,17 @@ public class Game3DView extends GLSurfaceView {
             );
 
             float ratio =
-                    (float) width / height;
+                    (float) width / (float) height;
 
             Matrix.frustumM(
                     projection,
                     0,
                     -ratio,
                     ratio,
-                    -1,
-                    1,
-                    2,
-                    150
+                    -1f,
+                    1f,
+                    2f,
+                    160f
             );
         }
 
@@ -253,225 +238,181 @@ public class Game3DView extends GLSurfaceView {
                     GLES20.GL_DEPTH_BUFFER_BIT
             );
 
-            updateMachine();
+            update();
 
             Matrix.setLookAtM(
                     view,
                     0,
-
-                    machineX,
+                    x,
                     7.5f,
-                    machineZ + 11f,
-
-                    machineX,
+                    z + 12f,
+                    x,
                     1.7f,
-                    machineZ,
-
-                    0,
-                    1,
-                    0
+                    z,
+                    0f,
+                    1f,
+                    0f
             );
 
             drawWorld();
             drawExcavator();
         }
 
+        private void update() {
+
+            if (forward)
+                z -= speed;
+
+            if (backward)
+                z += speed;
+
+            if (left)
+                x -= speed;
+
+            if (right)
+                x += speed;
+
+            x = Math.max(-20f, Math.min(20f, x));
+            z = Math.max(-20f, Math.min(20f, z));
+
+            arm += 0.15f;
+            if (arm > 10f)
+                arm = -12f;
+        }
+
         private void drawWorld() {
 
-            // الأرض
-            cube(
-                    0,
-                    -0.8f,
-                    0,
-                    50,
-                    1,
-                    50,
-                    0.25f,
-                    0.55f,
-                    0.20f
+            // أرض
+            box(
+                    0f,-0.8f,0f,
+                    50f,1f,50f,
+                    0.25f,0.55f,0.20f
             );
 
-            // الطريق
-            cube(
-                    0,
-                    -0.25f,
-                    0,
-                    8,
-                    0.18f,
-                    45,
-                    0.13f,
-                    0.13f,
-                    0.13f
+            // طريق
+            box(
+                    0f,-0.20f,0f,
+                    8f,0.18f,45f,
+                    0.12f,0.12f,0.12f
             );
 
             // خطوط الطريق
-            for (int z = -20; z <= 20; z += 5) {
+            for (int i = -20; i <= 20; i += 5) {
 
-                cube(
-                        0,
-                        -0.13f,
-                        z,
-                        0.3f,
-                        0.05f,
-                        2,
-                        1f,
-                        0.85f,
-                        0.15f
+                box(
+                        0f,-0.08f,i,
+                        0.30f,0.05f,2f,
+                        0.95f,0.80f,0.08f
                 );
             }
 
             // منطقة الحفر
-            cube(
-                    15,
-                    -0.15f,
-                    -5,
-                    10,
-                    0.35f,
-                    9,
-                    0.38f,
-                    0.25f,
-                    0.12f
+            box(
+                    15f,-0.20f,-5f,
+                    11f,0.40f,10f,
+                    0.38f,0.25f,0.12f
             );
 
-            // أكوام تراب
-            cube(
-                    11,
-                    0.7f,
-                    -5,
-                    2.5f,
-                    1.5f,
-                    2.5f,
-                    0.42f,
-                    0.29f,
-                    0.12f
+            // أكوام التراب
+            box(
+                    11f,0.75f,-5f,
+                    3f,1.5f,3f,
+                    0.45f,0.30f,0.12f
             );
 
-            cube(
-                    19,
-                    0.8f,
-                    -3,
-                    3,
-                    1.7f,
-                    2.4f,
-                    0.40f,
-                    0.27f,
-                    0.10f
+            box(
+                    19f,0.90f,-3f,
+                    3.5f,1.8f,2.8f,
+                    0.40f,0.27f,0.10f
             );
 
             // أشجار
-            tree(-16, -10);
-            tree(16, -14);
-            tree(-17, 12);
-            tree(17, 13);
+            tree(-16f,-10f);
+            tree(16f,-14f);
+            tree(-17f,12f);
+            tree(17f,13f);
 
             // صخور
-            cube(
-                    -10,
-                    0.2f,
-                    -5,
-                    2.5f,
-                    1.5f,
-                    2,
-                    0.32f,
-                    0.32f,
-                    0.30f
+            box(
+                    -10f,0.15f,-5f,
+                    2.8f,1.5f,2.2f,
+                    0.32f,0.32f,0.30f
             );
         }
 
-        private void tree(float x, float z) {
+        private void tree(float tx, float tz) {
 
-            cube(
-                    x,
-                    1.2f,
-                    z,
-                    0.7f,
-                    2.4f,
-                    0.7f,
-                    0.35f,
-                    0.20f,
-                    0.08f
+            box(
+                    tx,1.2f,tz,
+                    0.7f,2.5f,0.7f,
+                    0.35f,0.20f,0.08f
             );
 
-            cube(
-                    x,
-                    3f,
-                    z,
-                    3f,
-                    3f,
-                    3f,
-                    0.08f,
-                    0.45f,
-                    0.10f
+            box(
+                    tx,3.0f,tz,
+                    3f,3f,3f,
+                    0.08f,0.45f,0.10f
             );
         }
 
         private void drawExcavator() {
 
-            float x = machineX;
-            float z = machineZ;
-
-            // =====================
             // الجنزير الأيسر
-            // =====================
-
-            cube(
+            box(
                     x - 1.15f,
                     0.35f,
                     z,
-                    1.05f,
+                    1.10f,
                     0.75f,
-                    3.4f,
-                    0.08f,
-                    0.08f,
-                    0.07f
+                    3.5f,
+                    0.07f,
+                    0.07f,
+                    0.06f
             );
 
-            // =====================
             // الجنزير الأيمن
-            // =====================
-
-            cube(
+            box(
                     x + 1.15f,
                     0.35f,
                     z,
-                    1.05f,
+                    1.10f,
                     0.75f,
-                    3.4f,
-                    0.08f,
-                    0.08f,
-                    0.07f
+                    3.5f,
+                    0.07f,
+                    0.07f,
+                    0.06f
             );
 
-            // عجلات الجنزير
+            // تفاصيل الجنزير
             for (int i = -1; i <= 1; i++) {
 
-                cube(
-                        x - 1.7f,
+                box(
+                        x - 1.72f,
                         0.35f,
-                        z + i * 1.0f,
-                        0.15f,
-                        0.45f,
-                        0.65f,
+                        z + i * 1.05f,
+                        0.12f,
+                        0.48f,
+                        0.70f,
                         0.20f,
                         0.20f,
                         0.18f
                 );
 
-                cube(
-                        x + 1.7f,
+                box(
+                        x + 1.72f,
                         0.35f,
-                        z + i * 1.0f,
-                        0.15f,
-                        0.45f,
-                        0.65f,
+                        z + i * 1.05f,
+                        0.12f,
+                        0.48f,
+                        0.70f,
                         0.20f,
                         0.20f,
                         0.18f
                 );
             }
 
-            // قاعدة الدوران
-            cube(
+            // القاعدة
+            box(
                     x,
                     0.95f,
                     z,
@@ -483,12 +424,12 @@ public class Game3DView extends GLSurfaceView {
                     0.03f
             );
 
-            // جسم الحفارة
-            cube(
+            // الجسم
+            box(
                     x,
                     1.45f,
                     z,
-                    2.5f,
+                    2.6f,
                     1.0f,
                     2.3f,
                     0.95f,
@@ -497,37 +438,37 @@ public class Game3DView extends GLSurfaceView {
             );
 
             // الكابينة
-            cube(
+            box(
                     x - 0.45f,
                     2.55f,
                     z - 0.25f,
-                    1.7f,
+                    1.75f,
                     1.8f,
                     1.7f,
-                    0.12f,
-                    0.16f,
-                    0.18f
+                    0.10f,
+                    0.14f,
+                    0.16f
             );
 
-            // زجاج أمامي
-            cube(
+            // الزجاج
+            box(
                     x - 0.45f,
                     2.65f,
-                    z - 1.12f,
-                    1.25f,
+                    z - 1.14f,
+                    1.30f,
                     1.15f,
                     0.08f,
                     0.08f,
-                    0.30f,
-                    0.38f
+                    0.32f,
+                    0.42f
             );
 
             // سقف
-            cube(
+            box(
                     x - 0.45f,
                     3.55f,
                     z - 0.25f,
-                    1.9f,
+                    1.95f,
                     0.18f,
                     1.9f,
                     0.90f,
@@ -535,27 +476,24 @@ public class Game3DView extends GLSurfaceView {
                     0.03f
             );
 
-            // =====================
-            // الذراع
-            // =====================
-
-            Matrix.setIdentityM(model, 0);
+            // الذراع الأول
+            Matrix.setIdentityM(model,0);
 
             Matrix.translateM(
                     model,
                     0,
                     x,
-                    2.5f,
+                    2.55f,
                     z + 2.0f
             );
 
             Matrix.rotateM(
                     model,
                     0,
-                    armAngle,
-                    1,
-                    0,
-                    0
+                    arm,
+                    1f,
+                    0f,
+                    0f
             );
 
             Matrix.scaleM(
@@ -566,33 +504,30 @@ public class Game3DView extends GLSurfaceView {
                     4.0f
             );
 
-            drawCurrentModel(
+            current(
                     0.92f,
                     0.55f,
                     0.02f
             );
 
-            // =====================
             // الذراع الثاني
-            // =====================
-
-            Matrix.setIdentityM(model, 0);
+            Matrix.setIdentityM(model,0);
 
             Matrix.translateM(
                     model,
                     0,
                     x,
-                    1.7f,
+                    1.75f,
                     z + 4.8f
             );
 
             Matrix.rotateM(
                     model,
                     0,
-                    -bucketAngle,
-                    1,
-                    0,
-                    0
+                    -bucket,
+                    1f,
+                    0f,
+                    0f
             );
 
             Matrix.scaleM(
@@ -603,17 +538,14 @@ public class Game3DView extends GLSurfaceView {
                     2.8f
             );
 
-            drawCurrentModel(
+            current(
                     0.90f,
                     0.52f,
                     0.02f
             );
 
-            // =====================
             // الدلو
-            // =====================
-
-            cube(
+            box(
                     x,
                     0.75f,
                     z + 7.0f,
@@ -626,45 +558,10 @@ public class Game3DView extends GLSurfaceView {
             );
         }
 
-        private void updateMachine() {
-
-            if (forward)
-                machineZ -= speed;
-
-            if (backward)
-                machineZ += speed;
-
-            if (left)
-                machineX -= speed;
-
-            if (right)
-                machineX += speed;
-
-            machineX =
-                    Math.max(
-                            -20f,
-                            Math.min(20f, machineX)
-                    );
-
-            machineZ =
-                    Math.max(
-                            -20f,
-                            Math.min(20f, machineZ)
-                    );
-        }
-
-        private void stop() {
-
-            left = false;
-            right = false;
-            forward = false;
-            backward = false;
-        }
-
-        private void cube(
-                float x,
-                float y,
-                float z,
+        private void box(
+                float px,
+                float py,
+                float pz,
                 float sx,
                 float sy,
                 float sz,
@@ -672,14 +569,14 @@ public class Game3DView extends GLSurfaceView {
                 float g,
                 float b) {
 
-            Matrix.setIdentityM(model, 0);
+            Matrix.setIdentityM(model,0);
 
             Matrix.translateM(
                     model,
                     0,
-                    x,
-                    y,
-                    z
+                    px,
+                    py,
+                    pz
             );
 
             Matrix.scaleM(
@@ -690,10 +587,10 @@ public class Game3DView extends GLSurfaceView {
                     sz
             );
 
-            drawCurrentModel(r, g, b);
+            current(r,g,b);
         }
 
-        private void drawCurrentModel(
+        private void current(
                 float r,
                 float g,
                 float b) {
@@ -734,7 +631,7 @@ public class Game3DView extends GLSurfaceView {
                     1f
             );
 
-            cube.position(0);
+            vertices.position(0);
 
             GLES20.glEnableVertexAttribArray(
                     positionHandle
@@ -746,7 +643,7 @@ public class Game3DView extends GLSurfaceView {
                     GLES20.GL_FLOAT,
                     false,
                     12,
-                    cube
+                    vertices
             );
 
             GLES20.glDrawArrays(
@@ -758,6 +655,14 @@ public class Game3DView extends GLSurfaceView {
             GLES20.glDisableVertexAttribArray(
                     positionHandle
             );
+        }
+
+        private void stop() {
+
+            left = false;
+            right = false;
+            forward = false;
+            backward = false;
         }
 
         private int loadShader(
@@ -777,4 +682,4 @@ public class Game3DView extends GLSurfaceView {
             return shader;
         }
     }
-}
+                }
