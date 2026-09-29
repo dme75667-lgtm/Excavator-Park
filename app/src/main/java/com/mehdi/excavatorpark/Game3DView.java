@@ -10,16 +10,19 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
+
 public class Game3DView extends GLSurfaceView {
 
-    private final Renderer renderer;
+    private final GameRenderer renderer;
 
     public Game3DView(Context context) {
         super(context);
 
         setEGLContextClientVersion(2);
 
-        renderer = new Renderer();
+        renderer = new GameRenderer();
         setRenderer(renderer);
 
         setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
@@ -31,34 +34,25 @@ public class Game3DView extends GLSurfaceView {
         float x = event.getX();
         float y = event.getY();
 
+        float w = getWidth();
+        float h = getHeight();
+
         if (event.getAction() == MotionEvent.ACTION_DOWN ||
                 event.getAction() == MotionEvent.ACTION_MOVE) {
 
-            float w = getWidth();
-            float h = getHeight();
+            renderer.left = false;
+            renderer.right = false;
+            renderer.forward = false;
+            renderer.backward = false;
 
-            // يسار
             if (x < w * 0.25f && y > h * 0.65f) {
-                renderer.moveLeft = true;
-                renderer.moveRight = false;
-            }
-
-            // يمين
-            else if (x > w * 0.75f && y > h * 0.65f) {
-                renderer.moveRight = true;
-                renderer.moveLeft = false;
-            }
-
-            // أمام
-            else if (y < h * 0.45f) {
-                renderer.moveForward = true;
-                renderer.moveBackward = false;
-            }
-
-            // خلف
-            else {
-                renderer.moveBackward = true;
-                renderer.moveForward = false;
+                renderer.left = true;
+            } else if (x > w * 0.75f && y > h * 0.65f) {
+                renderer.right = true;
+            } else if (y < h * 0.45f) {
+                renderer.forward = true;
+            } else {
+                renderer.backward = true;
             }
 
             return true;
@@ -67,10 +61,10 @@ public class Game3DView extends GLSurfaceView {
         if (event.getAction() == MotionEvent.ACTION_UP ||
                 event.getAction() == MotionEvent.ACTION_CANCEL) {
 
-            renderer.moveLeft = false;
-            renderer.moveRight = false;
-            renderer.moveForward = false;
-            renderer.moveBackward = false;
+            renderer.left = false;
+            renderer.right = false;
+            renderer.forward = false;
+            renderer.backward = false;
 
             return true;
         }
@@ -78,12 +72,13 @@ public class Game3DView extends GLSurfaceView {
         return true;
     }
 
-    private static class Renderer implements GLSurfaceView.Renderer {
+    private static class GameRenderer implements GLSurfaceView.Renderer {
 
         private final float[] projection = new float[16];
         private final float[] view = new float[16];
         private final float[] model = new float[16];
         private final float[] mvp = new float[16];
+        private final float[] mv = new float[16];
 
         private FloatBuffer cubeBuffer;
 
@@ -92,47 +87,42 @@ public class Game3DView extends GLSurfaceView {
         private int colorHandle;
         private int mvpHandle;
 
-        private float excavatorX = 0;
-        private float excavatorZ = 0;
+        private float excavatorX = 0f;
+        private float excavatorZ = 0f;
 
-        boolean moveLeft;
-        boolean moveRight;
-        boolean moveForward;
-        boolean moveBackward;
+        private static final float SPEED = 0.08f;
+
+        boolean left;
+        boolean right;
+        boolean forward;
+        boolean backward;
 
         private final float[] cubeVertices = {
-
-                // أمام
                 -0.5f, -0.5f,  0.5f,
                  0.5f, -0.5f,  0.5f,
                  0.5f,  0.5f,  0.5f,
                 -0.5f,  0.5f,  0.5f,
 
-                // خلف
                 -0.5f, -0.5f, -0.5f,
                 -0.5f,  0.5f, -0.5f,
                  0.5f,  0.5f, -0.5f,
                  0.5f, -0.5f, -0.5f,
 
-                // يسار
                 -0.5f, -0.5f, -0.5f,
                 -0.5f, -0.5f,  0.5f,
                 -0.5f,  0.5f,  0.5f,
                 -0.5f,  0.5f, -0.5f,
 
-                // يمين
                  0.5f, -0.5f, -0.5f,
                  0.5f,  0.5f, -0.5f,
                  0.5f,  0.5f,  0.5f,
                  0.5f, -0.5f,  0.5f,
 
-                // فوق
                 -0.5f,  0.5f, -0.5f,
                 -0.5f,  0.5f,  0.5f,
                  0.5f,  0.5f,  0.5f,
                  0.5f,  0.5f, -0.5f,
 
-                // تحت
                 -0.5f, -0.5f, -0.5f,
                  0.5f, -0.5f, -0.5f,
                  0.5f, -0.5f,  0.5f,
@@ -140,8 +130,7 @@ public class Game3DView extends GLSurfaceView {
         };
 
         @Override
-        public void onSurfaceCreated(
-                javax.microedition.khronos.egl.EGLConfig config) {
+        public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 
             GLES20.glClearColor(
                     0.45f,
@@ -188,44 +177,57 @@ public class Game3DView extends GLSurfaceView {
 
             GLES20.glAttachShader(program, vertex);
             GLES20.glAttachShader(program, fragment);
-
             GLES20.glLinkProgram(program);
 
             positionHandle =
-                    GLES20.glGetAttribLocation(program, "aPosition");
+                    GLES20.glGetAttribLocation(
+                            program,
+                            "aPosition"
+                    );
 
             colorHandle =
-                    GLES20.glGetUniformLocation(program, "uColor");
+                    GLES20.glGetUniformLocation(
+                            program,
+                            "uColor"
+                    );
 
             mvpHandle =
-                    GLES20.glGetUniformLocation(program, "uMVP");
+                    GLES20.glGetUniformLocation(
+                            program,
+                            "uMVP"
+                    );
         }
 
         @Override
         public void onSurfaceChanged(
-                javax.microedition.khronos.opengles.GL10 gl,
+                GL10 gl,
                 int width,
                 int height) {
 
-            GLES20.glViewport(0, 0, width, height);
+            GLES20.glViewport(
+                    0,
+                    0,
+                    width,
+                    height
+            );
 
-            float ratio = (float) width / height;
+            float ratio =
+                    (float) width / (float) height;
 
             Matrix.frustumM(
                     projection,
                     0,
                     -ratio,
                     ratio,
-                    -1,
-                    1,
-                    2,
-                    100
+                    -1f,
+                    1f,
+                    2f,
+                    100f
             );
         }
 
         @Override
-        public void onDrawFrame(
-                javax.microedition.khronos.opengles.GL10 gl) {
+        public void onDrawFrame(GL10 gl) {
 
             GLES20.glClear(
                     GLES20.GL_COLOR_BUFFER_BIT |
@@ -234,88 +236,68 @@ public class Game3DView extends GLSurfaceView {
 
             updateMovement();
 
-            // الكاميرا خلف الحفارة
             Matrix.setLookAtM(
                     view,
                     0,
+
                     excavatorX,
                     5.5f,
                     excavatorZ + 9f,
 
                     excavatorX,
-                    0,
+                    0f,
                     excavatorZ,
 
-                    0,
-                    1,
-                    0
+                    0f,
+                    1f,
+                    0f
             );
 
             drawGround();
-
-            drawParkRoad();
-
+            drawRoad();
             drawExcavator();
-
-            drawCoinArea();
         }
 
         private void updateMovement() {
 
-            float speed = 0.08f;
-
-            if (moveLeft) {
-                excavatorX -= speed;
+            if (left) {
+                excavatorX -= SPEED;
             }
 
-            if (moveRight) {
-                excavatorX += speed;
+            if (right) {
+                excavatorX += SPEED;
             }
 
-            if (moveForward) {
-                excavatorZ -= speed;
+            if (forward) {
+                excavatorZ -= SPEED;
             }
 
-            if (moveBackward) {
-                excavatorZ += speed;
+            if (backward) {
+                excavatorZ += SPEED;
             }
         }
 
         private void drawGround() {
 
             drawCube(
-                    0,
-                    -0.5f,
-                    0,
-                    20,
-                    1,
-                    20,
-                    0.20f,
-                    0.45f,
-                    0.18f,
-                    1
+                    0f, -0.5f, 0f,
+                    20f, 1f, 20f,
+                    0.20f, 0.45f, 0.18f
             );
         }
 
-        private void drawParkRoad() {
+        private void drawRoad() {
 
             drawCube(
-                    0,
-                    0.02f,
-                    0,
-                    5,
-                    0.12f,
-                    20,
-                    0.35f,
-                    0.25f,
-                    0.15f,
-                    1
+                    0f, 0.02f, 0f,
+                    5f, 0.12f, 20f,
+                    0.35f, 0.25f, 0.15f
             );
         }
 
         private void drawExcavator() {
 
-            // جسم الحفارة
+            // الجسم
             drawCube(
                     excavatorX,
                     0.65f,
@@ -325,8 +307,7 @@ public class Game3DView extends GLSurfaceView {
                     2.5f,
                     1.0f,
                     0.55f,
-                    0.02f,
-                    1
+                    0.02f
             );
 
             // الكابينة
@@ -339,11 +320,10 @@ public class Game3DView extends GLSurfaceView {
                     1.0f,
                     0.08f,
                     0.12f,
-                    0.13f,
-                    1
+                    0.13f
             );
 
-            // الذراع الأول
+            // الذراع
             drawCube(
                     excavatorX + 1.0f,
                     1.35f,
@@ -353,8 +333,7 @@ public class Game3DView extends GLSurfaceView {
                     0.35f,
                     1.0f,
                     0.55f,
-                    0.02f,
-                    1
+                    0.02f
             );
 
             // الدلو
@@ -367,11 +346,10 @@ public class Game3DView extends GLSurfaceView {
                     0.9f,
                     0.75f,
                     0.40f,
-                    0.01f,
-                    1
+                    0.01f
             );
 
-            // جنزير يسار
+            // الجنزير الأيسر
             drawCube(
                     excavatorX - 0.8f,
                     0.35f,
@@ -381,11 +359,10 @@ public class Game3DView extends GLSurfaceView {
                     2.7f,
                     0.08f,
                     0.08f,
-                    0.08f,
-                    1
+                    0.08f
             );
 
-            // جنزير يمين
+            // الجنزير الأيمن
             drawCube(
                     excavatorX + 0.8f,
                     0.35f,
@@ -395,25 +372,7 @@ public class Game3DView extends GLSurfaceView {
                     2.7f,
                     0.08f,
                     0.08f,
-                    0.08f,
-                    1
-            );
-        }
-
-        private void drawCoinArea() {
-
-            // منطقة المكافأة
-            drawCube(
-                    7,
-                    0.08f,
-                    -5,
-                    2,
-                    0.15f,
-                    2,
-                    0.95f,
-                    0.65f,
-                    0.05f,
-                    1
+                    0.08f
             );
         }
 
@@ -426,8 +385,7 @@ public class Game3DView extends GLSurfaceView {
                 float sz,
                 float r,
                 float g,
-                float b,
-                float a) {
+                float b) {
 
             Matrix.setIdentityM(model, 0);
 
@@ -446,8 +404,6 @@ public class Game3DView extends GLSurfaceView {
                     sy,
                     sz
             );
-
-            float[] mv = new float[16];
 
             Matrix.multiplyMM(
                     mv,
@@ -495,7 +451,7 @@ public class Game3DView extends GLSurfaceView {
                     r,
                     g,
                     b,
-                    a
+                    1f
             );
 
             for (int i = 0; i < 6; i++) {
