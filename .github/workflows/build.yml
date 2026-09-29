@@ -1,33 +1,43 @@
 name: Excavator Park Build
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: تحميل المشروع
         uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
+      - name: إعداد Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Build APK
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace --no-daemon
+      - name: إعداد Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Upload APK
+      - name: تثبيت أدوات Android
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: تثبيت Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: بناء APK
+        run: gradle assembleDebug --stacktrace
+
+      - name: رفع APK
         uses: actions/upload-artifact@v4
         with:
           name: Excavator-Park-APK
-          path: '**/build/outputs/apk/debug/*.apk'
+          path: "**/build/outputs/apk/debug/*.apk"
           if-no-files-found: error
